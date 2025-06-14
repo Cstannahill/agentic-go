@@ -16,7 +16,7 @@ type RerankAgent struct {
 }
 
 func NewRerankAgent() *RerankAgent {
-	return &RerankAgent{id: fmt.Sprintf("rerank-agent-%s", uuid.NewString()), tool: tools.NewRerankTool()}
+	return &RerankAgent{id: fmt.Sprintf("rerank-agent-%s", uuid.NewString()), tool: tools.NewRerankToolWithProvider(tools.DefaultRerankProvider())}
 }
 
 func (r *RerankAgent) ID() string { return r.id }

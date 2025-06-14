@@ -1,6 +1,12 @@
 package tools
 
-import "testing"
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+)
 
 func TestRerankTool(t *testing.T) {
 	tool := NewRerankTool()
@@ -12,5 +18,21 @@ func TestRerankTool(t *testing.T) {
 	r := out["reranked"].([]map[string]interface{})
 	if r[0]["id"] != "b" {
 		t.Fatalf("unexpected order: %+v", r)
+	}
+}
+
+func TestRemoteRerankProvider(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewEncoder(w).Encode(map[string]interface{}{"scores": []float64{0.2, 0.8}})
+	}))
+	defer srv.Close()
+
+	p := NewRemoteRerankProvider(srv.URL)
+	scores, err := p.Rerank(context.Background(), "hi", []string{"a", "b"})
+	if err != nil {
+		t.Fatalf("rerank: %v", err)
+	}
+	if len(scores) != 2 || scores[1] <= scores[0] {
+		t.Fatalf("unexpected scores: %v", scores)
 	}
 }
