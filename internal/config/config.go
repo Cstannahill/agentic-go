@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 )
 
 // VectorStoreConfig holds configuration for connecting to a vector database.
@@ -17,6 +18,8 @@ type Config struct {
 	VectorStore       VectorStoreConfig
 	EmbeddingEndpoint string
 	RerankEndpoint    string
+	EmbeddingDim      int
+	RetrievalTopK     int
 }
 
 // LoadFromEnv builds a Config from environment variables.
@@ -26,6 +29,21 @@ func LoadFromEnv() Config {
 	if os.Getenv("VECTORSTORE_INSECURE") == "1" {
 		insecure = true
 	}
+
+	embDim := 0
+	if v := os.Getenv("EMBEDDING_DIM"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			embDim = n
+		}
+	}
+
+	topK := 0
+	if v := os.Getenv("RETRIEVAL_TOP_K"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			topK = n
+		}
+	}
+
 	return Config{
 		VectorStore: VectorStoreConfig{
 			Endpoint:   os.Getenv("VECTORSTORE_ENDPOINT"),
@@ -35,5 +53,7 @@ func LoadFromEnv() Config {
 		},
 		EmbeddingEndpoint: os.Getenv("EMBEDDING_ENDPOINT"),
 		RerankEndpoint:    os.Getenv("RERANK_ENDPOINT"),
+		EmbeddingDim:      embDim,
+		RetrievalTopK:     topK,
 	}
 }
