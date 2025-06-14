@@ -11,6 +11,7 @@ See [docs/architecture.md](docs/architecture.md) for a deeper architectural over
 - **Pipeline Orchestrator** – Executes ordered groups of steps.  Steps within a group run in their own goroutine and communicate results via channels.
 - **Tool Interfaces** – Stubs for embedding, retrieval and reranking demonstrate how external capabilities plug in.
 - **HTTP Server Example** – `cmd/server` exposes pipeline execution through a simple API.
+- **Data Transform Agent** – Performs basic string manipulation operations.
 
 ## Example
 
@@ -27,3 +28,30 @@ func init() {
 ```
 
 Pipelines reference agents by name and the orchestrator will instantiate them at runtime using the registry.  Each step's output becomes available for later steps through a shared `StepData` map.
+
+### Example Pipeline with `DataTransformAgent`
+
+The `DataTransformAgent` manipulates text according to an `operation` value.
+Supported operations are `uppercase`, `lowercase`, `reverse`, and `title`.
+
+```go
+pipeline := orchestrator.Pipeline{
+    ID: "string_pipeline",
+    Groups: []orchestrator.PipelineGroup{
+        {
+            Name: "transform",
+            Steps: []orchestrator.PipelineStep{
+                {
+                    Name:      "make_upper",
+                    AgentType: "DataTransformAgent",
+                    AgentConfig: agent.Task{Description: "Uppercase the text"},
+                    InputMappings: map[string]string{
+                        "text":      "initial.input_text",
+                        "operation": "initial.op",
+                    },
+                },
+            },
+        },
+    },
+}
+```
