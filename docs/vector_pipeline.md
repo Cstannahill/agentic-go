@@ -15,6 +15,10 @@ remote cross-encoder service.  Stores and providers can now be initialised from
 environment configuration using `config.LoadFromEnv` together with
 `vectorstore.InitDefault` and `tools.InitDefaults`.
 
+The default hash embedding dimension and retrieval depth are also
+configurable through `EMBEDDING_DIM` and `RETRIEVAL_TOP_K`. These values
+allow tuning relevance without code changes.
+
 ### Packages
 
 * `internal/vectorstore` – Defines the `VectorStore` interface, `MemoryStore`
@@ -45,6 +49,13 @@ be considered production ready:
    the simple upsert/delete calls now implemented.
 5. **Configuration Loader** – expose helper functions to read YAML/JSON configs
    so environments can be provisioned without recompilation.
+6. **Production Configuration** – tune embedding dimension and retrieval depth
+   via `EMBEDDING_DIM` and `RETRIEVAL_TOP_K` environment variables. This allows
+   consistent behaviour across deployments.
+7. **Integration Tests** – add test suites exercising the Qdrant client and
+   remote rerank service using local containers.
+8. **Error Handling & Retry** – provide clearer error types and automatic
+   retries for transient failures.
 
 Addressing these areas will harden the pipeline while keeping the API surface
 stable for early testing.

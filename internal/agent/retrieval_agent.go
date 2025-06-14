@@ -20,7 +20,7 @@ type RetrievalAgent struct {
 func NewRetrievalAgent() *RetrievalAgent {
 	return &RetrievalAgent{
 		id:   fmt.Sprintf("retrieval-agent-%s", uuid.NewString()),
-		tool: tools.NewRetrievalTool(vectorstore.DefaultStore(), 5),
+		tool: tools.NewRetrievalTool(vectorstore.DefaultStore(), tools.DefaultTopK()),
 	}
 }
 

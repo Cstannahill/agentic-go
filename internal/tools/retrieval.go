@@ -16,10 +16,22 @@ type RetrievalTool struct {
 // NewRetrievalTool constructs a RetrievalTool.
 func NewRetrievalTool(store vectorstore.VectorStore, k int) *RetrievalTool {
 	if k <= 0 {
-		k = 5
+		k = DefaultTopK()
 	}
 	return &RetrievalTool{Store: store, TopK: k}
 }
+
+var defaultTopK = 5
+
+// SetDefaultTopK sets the global default for retrieval when none is provided.
+func SetDefaultTopK(k int) {
+	if k > 0 {
+		defaultTopK = k
+	}
+}
+
+// DefaultTopK returns the currently configured default top K.
+func DefaultTopK() int { return defaultTopK }
 
 // Run implements the Tool interface.
 func (r *RetrievalTool) Run(ctx context.Context, input map[string]interface{}) (map[string]interface{}, error) {
