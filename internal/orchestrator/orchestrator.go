@@ -39,14 +39,12 @@ func (o *Orchestrator) ExecutePipeline(ctx context.Context, p Pipeline, initialI
 			}
 		}
 
-		// Instantiate agent. Only EchoAgent supported for now.
-		var ag ExecutableAgent
-		switch step.AgentType {
-		case "EchoAgent":
-			ag = agent.NewEchoAgent()
-		default:
+		// Instantiate agent via registry for plug-and-play behavior.
+		agIntf, ok := agent.New(step.AgentType)
+		if !ok {
 			return nil, fmt.Errorf("unknown agent type '%s'", step.AgentType)
 		}
+		var ag ExecutableAgent = agIntf
 
 		task := agent.Task{
 			ID:          fmt.Sprintf("%s_task_for_%s", p.ID, step.Name),
