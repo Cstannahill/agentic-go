@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"agentic.example.com/mvp/internal/agent"
@@ -11,6 +12,14 @@ import (
 
 func main() {
 	fmt.Println("--- Agentic Flow Engine Runner ---")
+
+	// Start a lightweight local HTTP server for demo purposes.
+	srv := &http.Server{Addr: ":8081"}
+	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "pong")
+	})
+	go srv.ListenAndServe()
+	defer srv.Shutdown(context.Background())
 
 	orc := orchestrator.NewOrchestrator()
 
@@ -43,6 +52,26 @@ func main() {
 							"original_greeting": "initial.user_greeting",
 						},
 					},
+				Name:      "step_one_echo",
+				AgentType: "EchoAgent",
+				AgentConfig: agent.Task{
+					Description: "First echo in the pipeline",
+				},
+				InputMappings: map[string]string{
+					"message": "initial.user_greeting",
+					"detail":  "initial.user_detail",
+				},
+			},
+			{
+				Name:      "step_two_http",
+				AgentType: "HTTPCallAgent",
+				AgentConfig: agent.Task{
+					Description: "Call local HTTP service",
+				},
+				InputMappings: map[string]string{
+					"url":    "initial.ping_url",
+					"method": "initial.http_method",
+
 				},
 			},
 		},
@@ -51,6 +80,8 @@ func main() {
 	initialInput := map[string]interface{}{
 		"user_greeting": "Hello from the pipeline!",
 		"user_detail":   "This is extra detail for step one.",
+		"ping_url":      "http://localhost:8081/ping",
+		"http_method":   "GET",
 	}
 
 	fmt.Printf("\nExecuting pipeline ID: %s\n", pipeline.ID)

@@ -44,6 +44,15 @@ func (o *Orchestrator) ExecutePipeline(ctx context.Context, p Pipeline, initialI
 				}
 			}
 
+		}
+
+		// Instantiate agent via registry for plug-and-play behavior.
+		agIntf, ok := agent.New(step.AgentType)
+		if !ok {
+			return nil, fmt.Errorf("unknown agent type '%s'", step.AgentType)
+		}
+		var ag ExecutableAgent = agIntf
+
 			var ag ExecutableAgent
 			switch step.AgentType {
 			case "EchoAgent":

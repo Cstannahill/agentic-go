@@ -118,3 +118,7 @@ func (ea *EchoAgent) Execute(ctx context.Context, task Task) Result {
 // For agentic systems, where tasks might be long-running or need to be cancelled,
 // using `context` from the start is a very good practice.
 // Think of it a bit like CancellationToken in C# or AbortSignal in web APIs.
+
+func init() {
+	Register("EchoAgent", func() Agent { return NewEchoAgent() })
+}
