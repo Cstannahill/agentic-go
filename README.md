@@ -14,6 +14,8 @@ Runtime options for connecting to external services are described in [docs/confi
 - **HTTP Server Example** – `cmd/server` exposes pipeline execution through a simple API.
 - **Data Transform Agent** – Performs basic string manipulation operations.
 - **RAG Generation Pipeline** – Embedding, retrieval, context injection and generation agents ready for early testing.
+- **Pipeline Builder** – `BuildRAGPipeline` returns a ready-to-run pipeline and
+  `ExtractRAGResponse` transforms raw results into a simple struct.
 
 ## Example
 
