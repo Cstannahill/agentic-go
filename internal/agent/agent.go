@@ -43,7 +43,6 @@ type Agent interface {
 	// Initialize(config map[string]interface{}) error // To set up an agent
 }
 
-
 // EchoAgent is a simple agent that echoes back the input it receives.
 type EchoAgent struct {
 	agentID string
@@ -74,13 +73,12 @@ func (ea *EchoAgent) Execute(ctx context.Context, task Task) Result {
 	fmt.Printf("[%s] Received task: %s - Input: %v\n", ea.agentID, task.Description, task.Input)
 
 	// Get desired delay from task input, default to 1 second
-	simulatedWorkDuration := 1 * time.Second // Default duration
+	simulatedWorkDuration := 1 * time.Second           // Default duration
 	if delay, ok := task.Input["delay_ms"].(int); ok { // Type assertion to int
 		simulatedWorkDuration = time.Duration(delay) * time.Millisecond
 	} else if delay, ok := task.Input["delay_ms"].(float64); ok { // Handle if number is float64 (common from JSON)
 		simulatedWorkDuration = time.Duration(delay) * time.Millisecond
 	}
-
 
 	fmt.Printf("[%s] Simulating work for %v...\n", ea.agentID, simulatedWorkDuration)
 	select {
