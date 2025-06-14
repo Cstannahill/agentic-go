@@ -14,6 +14,7 @@ type Document struct {
 type VectorStore interface {
 	Upsert(ctx context.Context, docs []Document) error
 	Query(ctx context.Context, embedding []float64, k int) ([]Document, error)
+	Delete(ctx context.Context, ids []string) error
 }
 
 var defaultStore VectorStore

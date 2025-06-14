@@ -80,3 +80,21 @@ func (m *MemoryStore) Query(ctx context.Context, emb []float64, k int) ([]Docume
 	}
 	return result, nil
 }
+
+// Delete removes documents with the specified IDs.
+func (m *MemoryStore) Delete(ctx context.Context, ids []string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	idSet := make(map[string]struct{}, len(ids))
+	for _, id := range ids {
+		idSet[id] = struct{}{}
+	}
+	filtered := m.docs[:0]
+	for _, d := range m.docs {
+		if _, ok := idSet[d.ID]; !ok {
+			filtered = append(filtered, d)
+		}
+	}
+	m.docs = filtered
+	return nil
+}
