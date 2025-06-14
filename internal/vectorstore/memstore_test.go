@@ -16,4 +16,7 @@ func TestMemoryStore(t *testing.T) {
 	if len(results) != 1 || results[0].ID != "1" {
 		t.Fatalf("unexpected results: %+v", results)
 	}
+	if results[0].Score == 0 {
+		t.Fatalf("expected score to be set")
+	}
 }

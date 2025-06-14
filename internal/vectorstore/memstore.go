@@ -74,7 +74,9 @@ func (m *MemoryStore) Query(ctx context.Context, emb []float64, k int) ([]Docume
 	}
 	result := make([]Document, 0, k)
 	for i := 0; i < k; i++ {
-		result = append(result, scoredDocs[i].doc)
+		d := scoredDocs[i].doc
+		d.Score = scoredDocs[i].score
+		result = append(result, d)
 	}
 	return result, nil
 }
