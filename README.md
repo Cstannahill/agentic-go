@@ -14,6 +14,10 @@ See [docs/architecture.md](docs/architecture.md) for a deeper architectural over
 
 ## Example
 
+See `cmd/agentrunner/main.go` for a basic pipeline using the `EchoAgent`. The orchestrator exposes both synchronous and asynchronous execution styles. `RunPipeline` streams step results over a channel so callers can react as work completes.
+
+Additional agents can be created and registered to extend the system:
+
 `cmd/agentrunner/main.go` defines a small pipeline using the `EchoAgent` and an `HTTPCallAgent`:
 
 ```go
