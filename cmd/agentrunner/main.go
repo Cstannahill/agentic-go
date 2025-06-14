@@ -13,7 +13,6 @@ import (
 func main() {
 	fmt.Println("--- Agentic Flow Engine Runner ---")
 
-	// Start a lightweight local HTTP server for demo purposes.
 	srv := &http.Server{Addr: ":8081"}
 	http.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, "pong")
@@ -25,7 +24,7 @@ func main() {
 
 	pipeline := orchestrator.Pipeline{
 		ID:          "simple_echo_pipeline_001",
-		Description: "A pipeline with two echo steps",
+		Description: "A pipeline with echo and HTTP steps",
 		Groups: []orchestrator.PipelineGroup{
 			{
 				Name: "initial",
@@ -42,36 +41,16 @@ func main() {
 						},
 					},
 					{
-						Name:      "step_two_echo",
-						AgentType: "EchoAgent",
+						Name:      "step_two_http",
+						AgentType: "HTTPCallAgent",
 						AgentConfig: agent.Task{
-							Description: "Second echo, uses output from step one",
+							Description: "Call local HTTP service",
 						},
 						InputMappings: map[string]string{
-							"complex_input":     fmt.Sprintf("step_one_echo.%s", orchestrator.DefaultOutputKey),
-							"original_greeting": "initial.user_greeting",
+							"url":    "initial.ping_url",
+							"method": "initial.http_method",
 						},
 					},
-				Name:      "step_one_echo",
-				AgentType: "EchoAgent",
-				AgentConfig: agent.Task{
-					Description: "First echo in the pipeline",
-				},
-				InputMappings: map[string]string{
-					"message": "initial.user_greeting",
-					"detail":  "initial.user_detail",
-				},
-			},
-			{
-				Name:      "step_two_http",
-				AgentType: "HTTPCallAgent",
-				AgentConfig: agent.Task{
-					Description: "Call local HTTP service",
-				},
-				InputMappings: map[string]string{
-					"url":    "initial.ping_url",
-					"method": "initial.http_method",
-
 				},
 			},
 		},

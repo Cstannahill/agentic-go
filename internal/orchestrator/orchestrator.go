@@ -8,12 +8,12 @@ import (
 	"agentic.example.com/mvp/internal/agent"
 )
 
-// ExecutePipeline runs the provided pipeline sequentially.
-// Each step's output is stored in StepData and may be referenced by later steps.
+// ExecutePipeline runs the provided pipeline sequentially while executing all
+// steps within a group concurrently. Results from each step are stored in
+// StepData so later steps can reference them.
 func (o *Orchestrator) ExecutePipeline(ctx context.Context, p Pipeline, initialInput map[string]interface{}) (StepData, error) {
 	fmt.Printf("Orchestrator: Starting pipeline '%s'\n", p.ID)
 
-	// Initialize step data with initial inputs (prefixed with "initial.").
 	current := make(StepData)
 	for k, v := range initialInput {
 		current[fmt.Sprintf("initial.%s", k)] = v
@@ -29,54 +29,55 @@ func (o *Orchestrator) ExecutePipeline(ctx context.Context, p Pipeline, initialI
 		}
 		resultCh := make(chan stepResult, len(group.Steps))
 
-		for _, step := range group.Steps {
-			taskInput := make(map[string]interface{})
-			for target, source := range step.InputMappings {
-				val, ok := resolveSourcePath(current, source)
-				if !ok {
-					fmt.Printf("Orchestrator: Warning - source '%s' not found for step '%s'\n", source, step.Name)
-				}
-				taskInput[target] = val
-			}
-			for k, v := range step.AgentConfig.Input {
-				if _, exists := taskInput[k]; !exists {
-					taskInput[k] = v
-				}
-			}
-
-		}
-
-		// Instantiate agent via registry for plug-and-play behavior.
-		agIntf, ok := agent.New(step.AgentType)
-		if !ok {
-			return nil, fmt.Errorf("unknown agent type '%s'", step.AgentType)
-		}
-		var ag ExecutableAgent = agIntf
-
-			var ag ExecutableAgent
-			switch step.AgentType {
-			case "EchoAgent":
-				ag = agent.NewEchoAgent()
-			case "HTTPCallAgent":
-				method, _ := step.AgentConfig.Input["method"].(string)
-				url, _ := step.AgentConfig.Input["url"].(string)
-				ag = agent.NewHTTPCallAgent(method, url, map[string]string{})
-			default:
-				return current, fmt.Errorf("unknown agent type '%s'", step.AgentType)
-			}
-
-			task := agent.Task{
-				ID:          fmt.Sprintf("%s_task_for_%s", p.ID, step.Name),
-				Description: step.AgentConfig.Description,
-				Input:       taskInput,
-			}
-
+		for _, st := range group.Steps {
+			step := st
 			wg.Add(1)
-			go func(st PipelineStep, ag ExecutableAgent, tk agent.Task) {
+			go func() {
 				defer wg.Done()
-				result := ag.Execute(ctx, tk)
-				resultCh <- stepResult{step: st, result: result}
-			}(step, ag, task)
+
+				taskInput := make(map[string]interface{})
+				for target, source := range step.InputMappings {
+					val, ok := resolveSourcePath(current, source)
+					if !ok {
+						fmt.Printf("Orchestrator: Warning - source '%s' not found for step '%s'\n", source, step.Name)
+					}
+					taskInput[target] = val
+				}
+				for k, v := range step.AgentConfig.Input {
+					if _, exists := taskInput[k]; !exists {
+						taskInput[k] = v
+					}
+				}
+
+				ag, ok := agent.New(step.AgentType)
+				if !ok {
+					resultCh <- stepResult{step: step, result: agent.Result{TaskID: step.Name, Error: fmt.Errorf("unknown agent type '%s'", step.AgentType)}}
+					return
+				}
+
+				// apply configuration for known agent types
+				switch a := ag.(type) {
+				case *agent.HTTPCallAgent:
+					if method, ok := taskInput["method"].(string); ok {
+						a.Method = method
+					}
+					if url, ok := taskInput["url"].(string); ok {
+						a.URL = url
+					}
+					if hdrs, ok := taskInput["headers"].(map[string]string); ok {
+						a.Headers = hdrs
+					}
+				}
+
+				task := agent.Task{
+					ID:          fmt.Sprintf("%s_task_for_%s", p.ID, step.Name),
+					Description: step.AgentConfig.Description,
+					Input:       taskInput,
+				}
+
+				res := ag.Execute(ctx, task)
+				resultCh <- stepResult{step: step, result: res}
+			}()
 		}
 
 		wg.Wait()
