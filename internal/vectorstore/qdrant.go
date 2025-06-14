@@ -3,6 +3,7 @@ package vectorstore
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,15 +15,39 @@ type QdrantStore struct {
 	Endpoint   string
 	Collection string
 	Client     *http.Client
+	APIKey     string
+	Insecure   bool
+}
+
+// QdrantOption customizes QdrantStore creation.
+type QdrantOption func(*QdrantStore)
+
+// WithAPIKey sets the API key for authenticating requests.
+func WithAPIKey(key string) QdrantOption {
+	return func(q *QdrantStore) { q.APIKey = key }
+}
+
+// WithInsecureSkipVerify disables TLS certificate verification.
+func WithInsecureSkipVerify() QdrantOption {
+	return func(q *QdrantStore) { q.Insecure = true }
 }
 
 // NewQdrantStore constructs a store for the given endpoint and collection.
-func NewQdrantStore(endpoint, collection string) *QdrantStore {
-	return &QdrantStore{
+// Options allow configuring authentication and TLS behaviour.
+func NewQdrantStore(endpoint, collection string, opts ...QdrantOption) *QdrantStore {
+	qs := &QdrantStore{
 		Endpoint:   endpoint,
 		Collection: collection,
-		Client:     &http.Client{Timeout: 30 * time.Second},
 	}
+	for _, opt := range opts {
+		opt(qs)
+	}
+	tr := &http.Transport{}
+	if qs.Insecure {
+		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
+	qs.Client = &http.Client{Timeout: 30 * time.Second, Transport: tr}
+	return qs
 }
 
 func (q *QdrantStore) Upsert(ctx context.Context, docs []Document) error {
@@ -46,6 +71,9 @@ func (q *QdrantStore) Upsert(ctx context.Context, docs []Document) error {
 		return err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if q.APIKey != "" {
+		req.Header.Set("api-key", q.APIKey)
+	}
 
 	resp, err := q.Client.Do(req)
 	if err != nil {
@@ -74,6 +102,9 @@ func (q *QdrantStore) Query(ctx context.Context, embedding []float64, k int) ([]
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	if q.APIKey != "" {
+		req.Header.Set("api-key", q.APIKey)
+	}
 
 	resp, err := q.Client.Do(req)
 	if err != nil {
@@ -96,7 +127,7 @@ func (q *QdrantStore) Query(ctx context.Context, embedding []float64, k int) ([]
 	}
 	docs := make([]Document, len(out.Result))
 	for i, r := range out.Result {
-		docs[i] = Document{ID: fmt.Sprint(r.ID), Embedding: nil, Metadata: r.Payload}
+		docs[i] = Document{ID: fmt.Sprint(r.ID), Embedding: nil, Metadata: r.Payload, Score: r.Score}
 	}
 	return docs, nil
 }

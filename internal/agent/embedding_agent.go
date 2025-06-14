@@ -22,7 +22,7 @@ func NewEmbeddingAgent() *EmbeddingAgent {
 	return &EmbeddingAgent{
 		id:    fmt.Sprintf("embedding-agent-%s", uuid.NewString()),
 		store: vectorstore.DefaultStore(),
-		tool:  tools.NewEmbeddingTool(128),
+		tool:  tools.NewEmbeddingToolWithProvider(tools.DefaultEmbeddingProvider()),
 	}
 }
 
