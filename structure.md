@@ -1,12 +1,27 @@
-go-agentic-mvp/
-├── go.mod
-├── go.sum // Will be updated as we add dependencies or run 'go mod tidy'
+agentic-go/
 ├── cmd/
-│ └── agentrunner/ // Our main application executable will be built from here
-│ └── main.go // The entry point for our application
+│   ├── agentrunner/        # Example application executing a pipeline
+│   │   └── main.go
+│   └── server/             # HTTP server exposing pipeline execution
+│       └── main.go
 ├── internal/
-│ └── agent/ // Core agent logic (e.g., Agent interface, implementations)
-│ └── agent.go // We'll define our first agent constructs here
-│ └── orchestrator/ // Logic for managing and coordinating agents (we'll add this later)
-│ └── orchestrator.go
-└── README.md // (Good practice to have one)
+│   ├── agent/              # Core agent interface and implementations
+│   │   ├── agent.go
+│   │   ├── http_agent.go
+│   │   └── registry.go
+│   ├── orchestrator/       # Pipeline and orchestrator logic
+│   │   ├── orchestrator.go
+│   │   └── pipeline.go
+│   └── tools/              # Stubs for embedding, retrieval, reranking
+│       ├── embedding.go
+│       ├── rerank.go
+│       ├── retrieval.go
+│       └── tool.go
+├── docs/                   # Project documentation
+│   ├── architecture.md
+│   └── universal_mcp.md
+├── concept.md              # Original notes and design discussion
+├── README.md
+├── structure.md            # This file
+├── go.mod
+└── go.sum
