@@ -131,3 +131,31 @@ func (q *QdrantStore) Query(ctx context.Context, embedding []float64, k int) ([]
 	}
 	return docs, nil
 }
+
+func (q *QdrantStore) Delete(ctx context.Context, ids []string) error {
+	payload := map[string]interface{}{
+		"points": ids,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+	url := fmt.Sprintf("%s/collections/%s/points/delete?wait=true", q.Endpoint, q.Collection)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	if q.APIKey != "" {
+		req.Header.Set("api-key", q.APIKey)
+	}
+	resp, err := q.Client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return fmt.Errorf("qdrant delete error: %s", resp.Status)
+	}
+	return nil
+}

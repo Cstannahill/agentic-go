@@ -11,7 +11,9 @@ in-memory implementation for tests and a `QdrantStore` that talks to a remote
 Qdrant instance. The embedding step can be backed by a pluggable
 `EmbeddingProvider` so that local hashing can easily be replaced with a real
 model. Reranking likewise uses a pluggable `RerankProvider` which may call a
-remote cross-encoder service.
+remote cross-encoder service.  Stores and providers can now be initialised from
+environment configuration using `config.LoadFromEnv` together with
+`vectorstore.InitDefault` and `tools.InitDefaults`.
 
 ### Packages
 
@@ -29,16 +31,20 @@ remote cross-encoder service.
 
 ## Remaining Work
 
-1. **Authentication & TLS** – secure connections to the remote vector store and
-   embedding service. Basic API-key support is now implemented for Qdrant.
-2. **Advanced Reranking** – integrate a cross-encoder model to score documents
-   based on query relevance. A `RemoteRerankProvider` stub is available.
-3. **Pipeline Configuration** – load store URLs and embedding options from
-   environment variables via the new `config` package.
-4. **Observability** – structured logging and metrics around all vector
-   operations.
-5. **Deletion and Updates** – expose document deletion and partial updates for
-   completeness.
+The following items track what is still required before the vector pipeline can
+be considered production ready:
 
-These steps will take the foundation here to a live-ready state while keeping the
-API surface stable.
+1. **Authentication & TLS** – secure connections to the remote vector store and
+   remote providers. Qdrant API key support has landed but certificate
+   validation and token based auth need wiring up.
+2. **Advanced Reranking** – integrate a cross-encoder model to score documents
+   based on query relevance. The `RemoteRerankProvider` is a placeholder for this.
+3. **Observability** – add structured logging and Prometheus metrics around all
+   vector operations.
+4. **Dataset Management** – support bulk imports and incremental updates beyond
+   the simple upsert/delete calls now implemented.
+5. **Configuration Loader** – expose helper functions to read YAML/JSON configs
+   so environments can be provisioned without recompilation.
+
+Addressing these areas will harden the pipeline while keeping the API surface
+stable for early testing.

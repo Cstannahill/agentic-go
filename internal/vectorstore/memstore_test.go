@@ -19,4 +19,15 @@ func TestMemoryStore(t *testing.T) {
 	if results[0].Score == 0 {
 		t.Fatalf("expected score to be set")
 	}
+
+	if err := store.Delete(nil, []string{"1"}); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	results, err = store.Query(nil, []float64{1, 0}, 1)
+	if err != nil {
+		t.Fatalf("query after delete: %v", err)
+	}
+	if len(results) != 0 {
+		t.Fatalf("expected empty results after delete: %+v", results)
+	}
 }
