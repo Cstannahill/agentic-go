@@ -47,7 +47,7 @@ func (e *EmbeddingTool) Run(ctx context.Context, input map[string]interface{}) (
 	}
 
 	if e.Provider == nil {
-		e.Provider = HashEmbeddingProvider{Dim: 128}
+		e.Provider = DefaultEmbeddingProvider()
 	}
 
 	emb, err := e.Provider.Embed(ctx, txt)
