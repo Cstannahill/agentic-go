@@ -19,13 +19,25 @@ func BasicHashEmbed(text string, dim int) []float64 {
 	return vec
 }
 
-// EmbeddingTool produces embeddings for provided text.
+// EmbeddingTool produces embeddings for provided text. The actual embedding
+// generation is delegated to an EmbeddingProvider so different backends can be
+// swapped in as needed.
 type EmbeddingTool struct {
-	Dim int
+	Provider EmbeddingProvider
 }
 
-// NewEmbeddingTool returns an EmbeddingTool with the given dimension.
-func NewEmbeddingTool(dim int) *EmbeddingTool { return &EmbeddingTool{Dim: dim} }
+// NewEmbeddingTool creates an EmbeddingTool using a HashEmbeddingProvider with
+// the specified dimension. This maintains backwards compatibility with previous
+// behaviour while allowing custom providers.
+func NewEmbeddingTool(dim int) *EmbeddingTool {
+	return NewEmbeddingToolWithProvider(HashEmbeddingProvider{Dim: dim})
+}
+
+// NewEmbeddingToolWithProvider allows callers to specify a custom provider such
+// as a remote embedding service.
+func NewEmbeddingToolWithProvider(p EmbeddingProvider) *EmbeddingTool {
+	return &EmbeddingTool{Provider: p}
+}
 
 // Run implements the Tool interface.
 func (e *EmbeddingTool) Run(ctx context.Context, input map[string]interface{}) (map[string]interface{}, error) {
@@ -33,6 +45,14 @@ func (e *EmbeddingTool) Run(ctx context.Context, input map[string]interface{}) (
 	if txt == "" {
 		return nil, errors.New("text field required")
 	}
-	emb := BasicHashEmbed(txt, e.Dim)
+
+	if e.Provider == nil {
+		e.Provider = HashEmbeddingProvider{Dim: 128}
+	}
+
+	emb, err := e.Provider.Embed(ctx, txt)
+	if err != nil {
+		return nil, err
+	}
 	return map[string]interface{}{"embedding": emb}, nil
 }

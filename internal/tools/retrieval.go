@@ -39,6 +39,7 @@ func (r *RetrievalTool) Run(ctx context.Context, input map[string]interface{}) (
 		out[i] = map[string]interface{}{
 			"id":       d.ID,
 			"metadata": d.Metadata,
+			"score":    d.Score,
 		}
 	}
 	return map[string]interface{}{"documents": out}, nil

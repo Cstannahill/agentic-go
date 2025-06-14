@@ -7,6 +7,7 @@ type Document struct {
 	ID        string
 	Embedding []float64
 	Metadata  map[string]interface{}
+	Score     float64 // optional score returned by queries
 }
 
 // VectorStore defines the operations supported by a store.

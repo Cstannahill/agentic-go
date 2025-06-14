@@ -20,4 +20,7 @@ func TestRetrievalTool(t *testing.T) {
 	if len(docs) != 1 || docs[0]["id"] != "1" {
 		t.Fatalf("unexpected result: %+v", out)
 	}
+	if _, ok := docs[0]["score"]; !ok {
+		t.Fatalf("missing score: %+v", docs[0])
+	}
 }
