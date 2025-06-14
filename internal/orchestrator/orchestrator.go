@@ -3,13 +3,14 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"agentic.example.com/mvp/internal/agent"
 )
 
 // ExecutePipeline runs the provided pipeline sequentially.
 // Each step's output is stored in StepData and may be referenced by later steps.
-func (o *Orchestrator) ExecutePipeline(ctx context.Context, p Pipeline, initialInput map[string]interface{}) (map[string]interface{}, error) {
+func (o *Orchestrator) ExecutePipeline(ctx context.Context, p Pipeline, initialInput map[string]interface{}) (StepData, error) {
 	fmt.Printf("Orchestrator: Starting pipeline '%s'\n", p.ID)
 
 	// Initialize step data with initial inputs (prefixed with "initial.").
@@ -18,69 +19,77 @@ func (o *Orchestrator) ExecutePipeline(ctx context.Context, p Pipeline, initialI
 		current[fmt.Sprintf("initial.%s", k)] = v
 	}
 
-	var final map[string]interface{}
+	for gi, group := range p.Groups {
+		fmt.Printf("Orchestrator: Executing group %d: '%s' with %d step(s)\n", gi+1, group.Name, len(group.Steps))
 
-	for i, step := range p.Steps {
-		fmt.Printf("Orchestrator: Executing step %d: '%s' (AgentType: %s)\n", i+1, step.Name, step.AgentType)
+		var wg sync.WaitGroup
+		type stepResult struct {
+			step   PipelineStep
+			result agent.Result
+		}
+		resultCh := make(chan stepResult, len(group.Steps))
 
-		// Build task input from mappings.
-		taskInput := make(map[string]interface{})
-		for target, source := range step.InputMappings {
-			val, ok := resolveSourcePath(current, source)
-			if !ok {
-				fmt.Printf("Orchestrator: Warning - source '%s' not found for step '%s'\n", source, step.Name)
+		for _, step := range group.Steps {
+			taskInput := make(map[string]interface{})
+			for target, source := range step.InputMappings {
+				val, ok := resolveSourcePath(current, source)
+				if !ok {
+					fmt.Printf("Orchestrator: Warning - source '%s' not found for step '%s'\n", source, step.Name)
+				}
+				taskInput[target] = val
 			}
-			taskInput[target] = val
-		}
-		// Merge static config values if not overridden by mappings.
-		for k, v := range step.AgentConfig.Input {
-			if _, exists := taskInput[k]; !exists {
-				taskInput[k] = v
+			for k, v := range step.AgentConfig.Input {
+				if _, exists := taskInput[k]; !exists {
+					taskInput[k] = v
+				}
 			}
+
+			var ag ExecutableAgent
+			switch step.AgentType {
+			case "EchoAgent":
+				ag = agent.NewEchoAgent()
+			case "HTTPCallAgent":
+				method, _ := step.AgentConfig.Input["method"].(string)
+				url, _ := step.AgentConfig.Input["url"].(string)
+				ag = agent.NewHTTPCallAgent(method, url, map[string]string{})
+			default:
+				return current, fmt.Errorf("unknown agent type '%s'", step.AgentType)
+			}
+
+			task := agent.Task{
+				ID:          fmt.Sprintf("%s_task_for_%s", p.ID, step.Name),
+				Description: step.AgentConfig.Description,
+				Input:       taskInput,
+			}
+
+			wg.Add(1)
+			go func(st PipelineStep, ag ExecutableAgent, tk agent.Task) {
+				defer wg.Done()
+				result := ag.Execute(ctx, tk)
+				resultCh <- stepResult{step: st, result: result}
+			}(step, ag, task)
 		}
 
-		// Instantiate agent. Only EchoAgent supported for now.
-		var ag ExecutableAgent
-		switch step.AgentType {
-		case "EchoAgent":
-			ag = agent.NewEchoAgent()
-		default:
-			return nil, fmt.Errorf("unknown agent type '%s'", step.AgentType)
-		}
+		wg.Wait()
+		close(resultCh)
 
-		task := agent.Task{
-			ID:          fmt.Sprintf("%s_task_for_%s", p.ID, step.Name),
-			Description: step.AgentConfig.Description,
-			Input:       taskInput,
-		}
+		for res := range resultCh {
+			if !res.result.Successful {
+				return current, fmt.Errorf("step '%s' failed: %w", res.step.Name, res.result.Error)
+			}
 
-		// Run the agent in a goroutine and wait via channel for result.
-		resultCh := make(chan agent.Result, 1)
-		go func() { resultCh <- ag.Execute(ctx, task) }()
+			fmt.Printf("Orchestrator: Step '%s' completed. Output: %v\n", res.step.Name, res.result.Output)
 
-		result := <-resultCh
-		if !result.Successful {
-			return nil, fmt.Errorf("step '%s' failed: %w", step.Name, result.Error)
-		}
-
-		fmt.Printf("Orchestrator: Step '%s' completed. Output: %v\n", step.Name, result.Output)
-
-		// Store output for later steps.
-		if result.Output != nil {
-			current[fmt.Sprintf("%s.%s", step.Name, DefaultOutputKey)] = result.Output
-		}
-		current[fmt.Sprintf("%s.task_id", step.Name)] = result.TaskID
-		current[fmt.Sprintf("%s.successful", step.Name)] = result.Successful
-
-		if outputMap, ok := result.Output.(map[string]interface{}); ok {
-			final = outputMap
-		} else {
-			final = map[string]interface{}{string(DefaultOutputKey): result.Output}
+			if res.result.Output != nil {
+				current[fmt.Sprintf("%s.%s", res.step.Name, DefaultOutputKey)] = res.result.Output
+			}
+			current[fmt.Sprintf("%s.task_id", res.step.Name)] = res.result.TaskID
+			current[fmt.Sprintf("%s.successful", res.step.Name)] = res.result.Successful
 		}
 	}
 
 	fmt.Printf("Orchestrator: Pipeline '%s' completed successfully.\n", p.ID)
-	return final, nil
+	return current, nil
 }
 
 // resolveSourcePath retrieves a value from StepData based on a simple path.
