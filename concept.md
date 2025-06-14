@@ -2035,3 +2035,51 @@ This is a substantial step! How does this initial structure for pipelines and th
 
 
 Gemini can make mistakes, so double-check it
+
+## Expanding the Agentic Flow Engine Concept
+
+The previous sections demonstrated a simple sequential pipeline using an `EchoAgent`. To transform this into a reusable orchestration layer we will rely heavily on Go's concurrency primitives and a plugin style architecture.
+
+### Pipeline Groups
+
+Pipelines are now composed of ordered **groups** of steps. Steps inside a group execute concurrently so long as they do not depend on each other's output. This keeps the definition readable while allowing the orchestrator to fully leverage goroutines and channels.
+
+```go
+// Example structure
+pipeline := orchestrator.Pipeline{
+    ID: "example",
+    Groups: []orchestrator.PipelineGroup{
+        {Name: "fetch", Steps: []orchestrator.PipelineStep{/* ... */}},
+        {Name: "process", Steps: []orchestrator.PipelineStep{/* ... */}},
+    },
+}
+```
+
+### Executable Agents
+
+Any piece of logic can become an `agent` by implementing the `Execute` method. The orchestrator instantiates agents based on the `AgentType` of each step. Besides the existing `EchoAgent` we now include `HTTPCallAgent` for invoking remote tools. Additional agents such as embedding generators, reranking logic or document retrieval can be added without changing the orchestrator itself.
+
+### Concurrency Model
+
+Within a pipeline group each step is launched in its own goroutine. Results are sent through a channel and collected once all goroutines finish. This model isolates each piece of work while keeping the orchestration code straightforward. Channels also make it trivial to introduce fan-in/fan-out patterns as the engine grows.
+
+### Full Flow Example
+
+A future pipeline might look like this:
+
+1. **RetrievalAgent** – queries a vector database for relevant context.
+2. **EmbeddingAgent** – computes embeddings for new text.
+3. **RerankAgent** – sorts retrieved documents using a scoring function.
+4. **HTTPCallAgent** – sends the aggregated context to an LLM endpoint.
+5. **DocumentAttachAgent** – stores the final answer along with references.
+
+Each of these agents could live in separate repositories or services. As long as they expose an HTTP API or a small Go wrapper they are usable by the engine.
+
+### Extensibility Goals
+
+* **Code agnostic** – external tools communicate over well defined task inputs and outputs. No knowledge of the host language is required.
+* **Concurrent by default** – every step and remote call uses goroutines and channels so the system scales with available CPU resources.
+* **Composable** – pipelines describe only the sequence of agent types and data mappings. New behaviors emerge from combining small focused agents.
+* **Observability** – step outputs are stored in a shared `StepData` map for debugging or later inspection.
+
+This outline is still a skeleton but it sets the direction for a robust Go based agentic orchestration layer capable of handling embedding, reranking, retrieval and any custom tool you wish to plug in.

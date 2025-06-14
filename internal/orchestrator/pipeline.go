@@ -27,10 +27,21 @@ type PipelineStep struct {
 }
 
 // Pipeline defines a sequence of steps executed by the orchestrator.
+// PipelineGroup represents a set of steps that may be executed concurrently.
+// Steps inside a group should not depend on each other's output. Groups are
+// executed sequentially in the order they are defined.
+type PipelineGroup struct {
+	Name  string
+	Steps []PipelineStep
+}
+
+// Pipeline defines a sequence of groups executed by the orchestrator.  The
+// design allows future expansion to parallel step execution while keeping the
+// definition simple.
 type Pipeline struct {
 	ID          string
 	Description string
-	Steps       []PipelineStep
+	Groups      []PipelineGroup
 }
 
 // Orchestrator coordinates execution of pipelines.
