@@ -12,6 +12,7 @@ See [docs/architecture.md](docs/architecture.md) for a deeper architectural over
 - **Tool Interfaces** – Stubs for embedding, retrieval and reranking demonstrate how external capabilities plug in.
 - **HTTP Server Example** – `cmd/server` exposes pipeline execution through a simple API.
 - **Data Transform Agent** – Performs basic string manipulation operations.
+- **RAG Generation Pipeline** – Embedding, retrieval, context injection and generation agents ready for early testing.
 
 ## Example
 
