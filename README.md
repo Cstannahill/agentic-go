@@ -11,7 +11,9 @@ This repository contains an experimental orchestration layer for building agent 
 
 ## Example
 
-See `cmd/agentrunner/main.go` for a basic pipeline using the `EchoAgent`. Additional agents can be created and registered to extend the system:
+See `cmd/agentrunner/main.go` for a basic pipeline using the `EchoAgent`. The orchestrator exposes both synchronous and asynchronous execution styles. `RunPipeline` streams step results over a channel so callers can react as work completes.
+
+Additional agents can be created and registered to extend the system:
 
 ```go
 func init() {

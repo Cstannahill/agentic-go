@@ -67,8 +67,17 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	finalData, err := orc.ExecutePipeline(ctx, pipeline, initialInput)
-	if err != nil {
+	events, errCh := orc.RunPipeline(ctx, pipeline, initialInput)
+	finalData := make(orchestrator.StepData)
+	for ev := range events {
+		fmt.Printf("Event: step %s finished with output %v\n", ev.Step, ev.Result.Output)
+		if ev.Result.Output != nil {
+			finalData[fmt.Sprintf("%s.%s", ev.Step, orchestrator.DefaultOutputKey)] = ev.Result.Output
+		}
+		finalData[fmt.Sprintf("%s.successful", ev.Step)] = ev.Result.Successful
+	}
+
+	if err := <-errCh; err != nil {
 		fmt.Printf("Pipeline execution failed: %v\n", err)
 	} else {
 		fmt.Printf("Pipeline executed successfully!\nFinal State: %v\n", finalData)
