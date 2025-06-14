@@ -23,12 +23,21 @@ func NewGenerationAgent(endpoint string) *GenerationAgent {
 	}
 }
 
+// NewDefaultGenerationAgent constructs an agent using the default completion endpoint.
+func NewDefaultGenerationAgent() *GenerationAgent {
+	return NewGenerationAgent(tools.DefaultCompletionEndpoint())
+}
+
 func (g *GenerationAgent) ID() string { return g.id }
 
 // Execute expects input with key "prompt" and optional "model".
 // It forwards the request to the CompletionTool.
 func (g *GenerationAgent) Execute(ctx context.Context, task Task) Result {
-	out, err := g.tool.Run(ctx, task.Input)
+	tool := g.tool
+	if ep, ok := task.Input["endpoint"].(string); ok && ep != "" && ep != g.tool.Endpoint {
+		tool = tools.NewCompletionTool(ep)
+	}
+	out, err := tool.Run(ctx, task.Input)
 	if err != nil {
 		return Result{TaskID: task.ID, Error: err}
 	}
@@ -36,5 +45,5 @@ func (g *GenerationAgent) Execute(ctx context.Context, task Task) Result {
 }
 
 func init() {
-	Register("GenerationAgent", func() Agent { return NewGenerationAgent("http://localhost:8080/completion") })
+	Register("GenerationAgent", func() Agent { return NewDefaultGenerationAgent() })
 }

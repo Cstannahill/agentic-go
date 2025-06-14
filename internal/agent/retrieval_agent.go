@@ -24,6 +24,14 @@ func NewRetrievalAgent() *RetrievalAgent {
 	}
 }
 
+// NewRetrievalAgentWithK allows configuring the number of documents to return.
+func NewRetrievalAgentWithK(k int) *RetrievalAgent {
+	return &RetrievalAgent{
+		id:   fmt.Sprintf("retrieval-agent-%s", uuid.NewString()),
+		tool: tools.NewRetrievalTool(vectorstore.DefaultStore(), k),
+	}
+}
+
 func (r *RetrievalAgent) ID() string { return r.id }
 
 func (r *RetrievalAgent) Execute(ctx context.Context, task Task) Result {

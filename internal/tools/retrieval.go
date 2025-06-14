@@ -27,6 +27,11 @@ func (r *RetrievalTool) Run(ctx context.Context, input map[string]interface{}) (
 	if !ok || len(emb) == 0 {
 		return nil, errors.New("embedding required")
 	}
+	if tk, ok := input["top_k"].(int); ok && tk > 0 {
+		r.TopK = tk
+	} else if tkf, ok := input["top_k"].(float64); ok && int(tkf) > 0 {
+		r.TopK = int(tkf)
+	}
 	if r.Store == nil {
 		r.Store = vectorstore.DefaultStore()
 	}

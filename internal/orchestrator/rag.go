@@ -7,9 +7,11 @@ import (
 // BuildRAGPipeline returns a preconfigured retrieval augmented generation pipeline.
 // The pipeline expects initial input with keys:
 //
-//	query    - user query text
-//	template - prompt template string
-//	model    - optional model name for generation
+//	query                - user query text
+//	template             - prompt template string
+//	model                - optional model name for generation
+//	top_k                - optional number of documents to retrieve
+//	completion_endpoint  - optional override for the generation endpoint
 func BuildRAGPipeline(id string) Pipeline {
 	return Pipeline{
 		ID:          id,
@@ -37,6 +39,7 @@ func BuildRAGPipeline(id string) Pipeline {
 						AgentConfig: agent.Task{Description: "Retrieve documents"},
 						InputMappings: map[string]string{
 							"embedding": "embed_query.default_output.embedding",
+							"top_k":     "initial.top_k",
 						},
 					},
 				},
@@ -77,8 +80,9 @@ func BuildRAGPipeline(id string) Pipeline {
 						AgentType:   "GenerationAgent",
 						AgentConfig: agent.Task{Description: "Generate final answer"},
 						InputMappings: map[string]string{
-							"prompt": "build_prompt.default_output.prompt",
-							"model":  "initial.model",
+							"prompt":   "build_prompt.default_output.prompt",
+							"model":    "initial.model",
+							"endpoint": "initial.completion_endpoint",
 						},
 					},
 				},
@@ -87,9 +91,15 @@ func BuildRAGPipeline(id string) Pipeline {
 	}
 }
 
+type ContextDocument struct {
+	ID       string                 `json:"id"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+	Score    float64                `json:"score,omitempty"`
+}
+
 type RAGResponse struct {
-	Answer  string                   `json:"answer"`
-	Context []map[string]interface{} `json:"context"`
+	Answer    string            `json:"answer"`
+	Documents []ContextDocument `json:"documents"`
 }
 
 // ExtractRAGResponse builds a structured RAGResponse from StepData
@@ -105,5 +115,18 @@ func ExtractRAGResponse(data StepData) (RAGResponse, bool) {
 	}
 	answer, _ := genOut["completion"].(string)
 	ctx, _ := rerankOut["reranked"].([]map[string]interface{})
-	return RAGResponse{Answer: answer, Context: ctx}, true
+	docs := make([]ContextDocument, len(ctx))
+	for i, d := range ctx {
+		docs[i] = ContextDocument{}
+		if id, ok := d["id"].(string); ok {
+			docs[i].ID = id
+		}
+		if meta, ok := d["metadata"].(map[string]interface{}); ok {
+			docs[i].Metadata = meta
+		}
+		if score, ok := d["score"].(float64); ok {
+			docs[i].Score = score
+		}
+	}
+	return RAGResponse{Answer: answer, Documents: docs}, true
 }

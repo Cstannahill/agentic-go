@@ -11,4 +11,7 @@ func InitDefaults(cfg config.Config) {
 	if cfg.RerankEndpoint != "" {
 		SetDefaultRerankProvider(NewRemoteRerankProvider(cfg.RerankEndpoint))
 	}
+	if cfg.CompletionEndpoint != "" {
+		SetDefaultCompletionEndpoint(cfg.CompletionEndpoint)
+	}
 }
