@@ -14,10 +14,9 @@ type VectorStoreConfig struct {
 }
 
 // Config aggregates runtime settings for the pipeline tools.
+// Config aggregates runtime settings for the pipeline tools.
+// Values may be empty when the corresponding environment variables are unset.
 type Config struct {
-	VectorStore       VectorStoreConfig
-	EmbeddingEndpoint string
-	RerankEndpoint    string
 	VectorStore        VectorStoreConfig
 	EmbeddingEndpoint  string
 	RerankEndpoint     string
@@ -33,7 +32,6 @@ func LoadFromEnv() Config {
 	if os.Getenv("VECTORSTORE_INSECURE") == "1" {
 		insecure = true
 	}
-
 
 	embDim := 0
 	if v := os.Getenv("EMBEDDING_DIM"); v != "" {

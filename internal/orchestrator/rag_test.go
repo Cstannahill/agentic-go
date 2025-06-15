@@ -36,7 +36,7 @@ func TestRAGPipeline(t *testing.T) {
 	emb := tools.BasicHashEmbed("hello", 128)
 	store.Upsert(context.Background(), []vectorstore.Document{{ID: "1", Embedding: emb, Metadata: map[string]interface{}{"text": "hello"}}})
 
-	pipeline := BuildRAGPipeline("rag_test")
+	pipeline := DefaultRAGPipeline("rag_test")
 	orc := NewOrchestrator()
 	input := map[string]interface{}{
 		"query":               "hello",
