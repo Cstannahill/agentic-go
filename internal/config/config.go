@@ -14,13 +14,16 @@ type VectorStoreConfig struct {
 }
 
 // Config aggregates runtime settings for the pipeline tools.
+// Config aggregates runtime settings for the pipeline tools.
+// Values may be empty when the corresponding environment variables are unset.
 type Config struct {
+	VectorStore        VectorStoreConfig
+	EmbeddingEndpoint  string
+	RerankEndpoint     string
 	// VectorStore defines connection details for the backing vector database.
-	VectorStore VectorStoreConfig
+
 	// EmbeddingEndpoint optionally points to a remote service used for generating embeddings.
-	EmbeddingEndpoint string
-	// RerankEndpoint optionally points to a remote service used to rerank retrieved documents.
-	RerankEndpoint string
+
 	// CompletionEndpoint defines where CompletionTool requests will be sent.
 	CompletionEndpoint string
 	// EmbeddingDim sets the dimension of the hash embedding provider when no remote service is used.

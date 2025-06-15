@@ -4,16 +4,24 @@ import (
 	"agentic.example.com/mvp/internal/agent"
 )
 
+// RAGPipelineOptions customize construction of the retrieval augmented
+// generation pipeline. Zero values fall back to defaults provided by the
+// individual tools and agents.
+type RAGPipelineOptions struct {
+	// DefaultTopK controls how many documents are retrieved when the caller
+	// does not provide a specific value in the initial input.
+	DefaultTopK int
+
+	// DefaultCompletionEndpoint specifies the HTTP endpoint used by the
+	// GenerationAgent when no override is supplied at runtime.
+	DefaultCompletionEndpoint string
+}
+
 // BuildRAGPipeline returns a preconfigured retrieval augmented generation pipeline.
-// The pipeline expects initial input with keys:
-//
-//		query                - user query text
-//		template             - prompt template string
-//		model                - optional model name for generation
-//		top_k                - optional number of documents to retrieve
-//		completion_endpoint  - optional override for the generation endpoint
-//	     extra_context        - optional map merged into the prompt data
-func BuildRAGPipeline(id string) Pipeline {
+// Options provide defaults for retrieval depth and completion endpoint when
+// the initial input omits them. At minimum a `query` and prompt `template`
+// must be supplied.
+func BuildRAGPipeline(id string, opts RAGPipelineOptions) Pipeline {
 	return Pipeline{
 		ID:          id,
 		Description: "retrieval augmented generation",
@@ -35,9 +43,12 @@ func BuildRAGPipeline(id string) Pipeline {
 				Name: "retrieve",
 				Steps: []PipelineStep{
 					{
-						Name:        "retrieve_docs",
-						AgentType:   "RetrievalAgent",
-						AgentConfig: agent.Task{Description: "Retrieve documents"},
+						Name:      "retrieve_docs",
+						AgentType: "RetrievalAgent",
+						AgentConfig: agent.Task{
+							Description: "Retrieve documents",
+							Input:       map[string]interface{}{"top_k": opts.DefaultTopK},
+						},
 						InputMappings: map[string]string{
 							"embedding": "embed_query.default_output.embedding",
 							"top_k":     "initial.top_k",
@@ -79,9 +90,12 @@ func BuildRAGPipeline(id string) Pipeline {
 				Name: "generate",
 				Steps: []PipelineStep{
 					{
-						Name:        "generate_answer",
-						AgentType:   "GenerationAgent",
-						AgentConfig: agent.Task{Description: "Generate final answer"},
+						Name:      "generate_answer",
+						AgentType: "GenerationAgent",
+						AgentConfig: agent.Task{
+							Description: "Generate final answer",
+							Input:       map[string]interface{}{"endpoint": opts.DefaultCompletionEndpoint},
+						},
 						InputMappings: map[string]string{
 							"prompt":   "build_prompt.default_output.prompt",
 							"model":    "initial.model",
@@ -94,6 +108,12 @@ func BuildRAGPipeline(id string) Pipeline {
 	}
 }
 
+// DefaultRAGPipeline constructs a pipeline using zero options for callers that
+// do not need custom defaults.
+func DefaultRAGPipeline(id string) Pipeline {
+	return BuildRAGPipeline(id, RAGPipelineOptions{})
+}
+
 type ContextDocument struct {
 	ID       string                 `json:"id"`
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -104,6 +124,8 @@ type RAGResponse struct {
 	Query     string            `json:"query"`
 	Answer    string            `json:"answer"`
 	Documents []ContextDocument `json:"documents"`
+	Model     string            `json:"model,omitempty"`
+	Prompt    string            `json:"prompt,omitempty"`
 }
 
 // ExtractRAGResponse builds a structured RAGResponse from StepData
@@ -118,7 +140,9 @@ func ExtractRAGResponse(data StepData) (RAGResponse, bool) {
 		return RAGResponse{}, false
 	}
 	answer, _ := genOut["completion"].(string)
+	prompt, _ := data["build_prompt.default_output"].(map[string]interface{})
 	query, _ := data["initial.query"].(string)
+	model, _ := data["initial.model"].(string)
 	ctx, _ := rerankOut["reranked"].([]map[string]interface{})
 	docs := make([]ContextDocument, len(ctx))
 	for i, d := range ctx {
@@ -133,5 +157,9 @@ func ExtractRAGResponse(data StepData) (RAGResponse, bool) {
 			docs[i].Score = score
 		}
 	}
-	return RAGResponse{Query: query, Answer: answer, Documents: docs}, true
+	pr := ""
+	if prompt != nil {
+		pr, _ = prompt["prompt"].(string)
+	}
+	return RAGResponse{Query: query, Answer: answer, Documents: docs, Model: model, Prompt: pr}, true
 }

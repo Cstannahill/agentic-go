@@ -15,14 +15,13 @@ early testing of end to end flows.
 5. **GenerationAgent** – Sends the prompt to the Universal MCP endpoint and
    returns the completion text.
 
-`internal/orchestrator.BuildRAGPipeline` wires these steps together. It expects
-initial input containing a user `query`, a prompt `template` and optionally a
-`model` name. Additional optional fields include `top_k` to control how many
-documents are retrieved, `completion_endpoint` to override the generation
-service URL and `extra_context` to pass arbitrary data into the template.
-After execution, `ExtractRAGResponse` converts the raw `StepData` into a
-`RAGResponse` struct containing the original query, generated answer and the
-list of injected `ContextDocument` values.
+`internal/orchestrator.BuildRAGPipeline` wires these steps together. Callers may
+provide `RAGPipelineOptions` to define defaults such as retrieval depth or the
+generation endpoint. The initial input must include a user `query` and a prompt
+`template`. Optional fields include `model`, `top_k`, `completion_endpoint` and
+`extra_context`. After execution, `ExtractRAGResponse` converts the raw
+`StepData` into a `RAGResponse` struct containing the original query, generated
+answer and the list of injected `ContextDocument` values.
 
 Each component runs as an agent so steps may execute concurrently where
 possible.  The `PromptAgent` and `GenerationAgent` now accept runtime options
@@ -34,6 +33,8 @@ against real services.
 - **Real LLM integration** – the `GenerationAgent` can point to any HTTP
   endpoint but proper authentication, retry logic and error handling still need
   to be implemented.
+- **Failure handling and retries** – implement retry logic and propagate
+  structured errors up the pipeline.
 - **Streaming responses** – the completion API currently returns the full text at
   once.  Support for server-sent events or gRPC streaming will allow incremental
   delivery to clients.

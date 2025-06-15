@@ -19,8 +19,8 @@ Runtime options for connecting to external services are described in [docs/confi
 - **Ingest Agents and Tools** – Easily embed and store new documents in the
   configured vector database.
 - **RAG Generation Pipeline** – Embedding, retrieval, context injection and generation agents ready for early testing.
-- **Pipeline Builder** – `BuildRAGPipeline` returns a ready-to-run pipeline and
-  `ExtractRAGResponse` transforms raw results into a simple struct.
+- **Pipeline Builder** – `BuildRAGPipeline` constructs a ready-to-run pipeline with optional defaults, and
+  `ExtractRAGResponse` transforms raw results into a structured `RAGResponse`.
 
 ## Example
 
