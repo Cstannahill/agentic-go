@@ -46,3 +46,26 @@ func TestRemoteEmbeddingProvider(t *testing.T) {
 		t.Fatalf("unexpected embedding: %v", emb)
 	}
 }
+
+func TestRemoteEmbeddingProviderRetry(t *testing.T) {
+	attempts := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			http.Error(w, "bad", http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"embedding": []float64{9}})
+	}))
+	defer srv.Close()
+
+	p := NewRemoteEmbeddingProvider(srv.URL)
+	p.MaxRetries = 1
+	emb, err := p.Embed(context.Background(), "hello")
+	if err != nil {
+		t.Fatalf("embed retry: %v", err)
+	}
+	if len(emb) != 1 || emb[0] != 9 || attempts != 2 {
+		t.Fatalf("unexpected result %+v attempts=%d", emb, attempts)
+	}
+}
