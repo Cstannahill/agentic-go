@@ -19,11 +19,8 @@ type Config struct {
 	EmbeddingEndpoint  string
 	RerankEndpoint     string
 	CompletionEndpoint string
-	VectorStore       VectorStoreConfig
-	EmbeddingEndpoint string
-	RerankEndpoint    string
-	EmbeddingDim      int
-	RetrievalTopK     int
+	EmbeddingDim       int
+	RetrievalTopK      int
 }
 
 // LoadFromEnv builds a Config from environment variables.
@@ -58,9 +55,7 @@ func LoadFromEnv() Config {
 		EmbeddingEndpoint:  os.Getenv("EMBEDDING_ENDPOINT"),
 		RerankEndpoint:     os.Getenv("RERANK_ENDPOINT"),
 		CompletionEndpoint: os.Getenv("COMPLETION_ENDPOINT"),
-		EmbeddingEndpoint: os.Getenv("EMBEDDING_ENDPOINT"),
-		RerankEndpoint:    os.Getenv("RERANK_ENDPOINT"),
-		EmbeddingDim:      embDim,
-		RetrievalTopK:     topK,
+		EmbeddingDim:       embDim,
+		RetrievalTopK:      topK,
 	}
 }
