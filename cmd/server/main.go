@@ -5,10 +5,8 @@ import (
 	"log"
 	"net/http"
 
-	"agentic.example.com/mvp/internal/config"
 	"agentic.example.com/mvp/internal/orchestrator"
-	"agentic.example.com/mvp/internal/tools"
-	"agentic.example.com/mvp/internal/vectorstore"
+	"agentic.example.com/mvp/internal/setup"
 )
 
 // executeRequest is the payload for POST /execute
@@ -23,31 +21,7 @@ type executeResponse struct {
 }
 
 func main() {
-	cfg := config.LoadFromEnv()
-
-	if cfg.VectorStore.Endpoint != "" && cfg.VectorStore.Collection != "" {
-		opts := []vectorstore.QdrantOption{}
-		if cfg.VectorStore.APIKey != "" {
-			opts = append(opts, vectorstore.WithAPIKey(cfg.VectorStore.APIKey))
-		}
-		if cfg.VectorStore.Insecure {
-			opts = append(opts, vectorstore.WithInsecureSkipVerify())
-		}
-		vectorstore.SetDefaultStore(
-			vectorstore.NewQdrantStore(cfg.VectorStore.Endpoint, cfg.VectorStore.Collection, opts...),
-		)
-	} else {
-		vectorstore.SetDefaultStore(vectorstore.NewMemoryStore())
-	}
-
-	if cfg.EmbeddingEndpoint != "" {
-		tools.SetDefaultEmbeddingProvider(tools.NewRemoteEmbeddingProvider(cfg.EmbeddingEndpoint))
-	}
-	if cfg.RerankEndpoint != "" {
-		tools.SetDefaultRerankProvider(tools.NewRemoteRerankProvider(cfg.RerankEndpoint))
-	}
-	vectorstore.InitDefault(cfg.VectorStore)
-	tools.InitDefaults(cfg)
+	setup.InitFromEnv()
 
 	orc := orchestrator.NewOrchestrator()
 

@@ -54,6 +54,7 @@ func BuildRAGPipeline(id string, opts RAGPipelineOptions) Pipeline {
 					InputMappings: map[string]string{
 						"embedding": "embed_query.default_output.embedding",
 						"top_k":     "initial.top_k",
+						"filter":    "initial.filter",
 					},
 				},
 			},

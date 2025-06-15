@@ -12,8 +12,9 @@ Qdrant instance. The embedding step can be backed by a pluggable
 `EmbeddingProvider` so that local hashing can easily be replaced with a real
 model. Reranking likewise uses a pluggable `RerankProvider` which may call a
 remote cross-encoder service. Stores and providers can now be initialised from
-environment configuration using `config.LoadFromEnv` together with
-`vectorstore.InitDefault` and `tools.InitDefaults`.
+environment configuration using `setup.InitFromEnv`. This convenience
+function loads configuration and wires up `vectorstore.InitDefault` and
+`tools.InitDefaults` in one call.
 Remote providers include simple retry logic so transient network failures are
 automatically retried.
 
@@ -48,11 +49,15 @@ custom `http.Client` so deployments can tune connection settings.
   headers (e.g. API tokens) and use exponential backoff on retry.
 - Configuration variables `EMBEDDING_API_KEY` and `RERANK_API_KEY` pass these
   tokens to the providers.
+- `setup.InitFromEnv` simplifies bootstrapping by wiring providers and the
+  vector store from environment variables.
+- The RAG pipeline's retrieval step now accepts an optional `filter` map which
+  is forwarded to the vector database query.
 
 ## Remaining Work
 
-These steps will take the foundation here to a live-ready state while keeping
-the API surface stable.
+The following tasks will harden the pipeline so it can service live traffic
+while keeping the public API stable.
 
 1. **Authentication & TLS** – secure connections to the remote vector store and
    embedding/ rerank services. Basic API token support is in place but
@@ -69,5 +74,10 @@ the API surface stable.
 6. **Production Configuration** – tune embedding dimension and retrieval depth
    via `EMBEDDING_DIM` and `RETRIEVAL_TOP_K` environment variables. This allows
    consistent behaviour across deployments.
-7. **Integration Tests** – add test suites exercising the Qdrant client and
-   remote rerank service using local containers.
+7. **Integration Tests** – expand test coverage by running the pipeline against
+   ephemeral Qdrant and rerank containers.
+8. **Operational Guides** – document deployment topologies and example
+   configuration files to assist early testers.
+9. **Failure Handling** – surface structured errors from tools and implement
+   retry logic around transient network failures beyond the current best-effort
+   approach.
