@@ -32,6 +32,11 @@ func WithInsecureSkipVerify() QdrantOption {
 	return func(q *QdrantStore) { q.Insecure = true }
 }
 
+// WithHTTPClient allows providing a custom HTTP client.
+func WithHTTPClient(c *http.Client) QdrantOption {
+	return func(q *QdrantStore) { q.Client = c }
+}
+
 // NewQdrantStore constructs a store for the given endpoint and collection.
 // Options allow configuring authentication and TLS behaviour.
 func NewQdrantStore(endpoint, collection string, opts ...QdrantOption) *QdrantStore {
@@ -42,11 +47,13 @@ func NewQdrantStore(endpoint, collection string, opts ...QdrantOption) *QdrantSt
 	for _, opt := range opts {
 		opt(qs)
 	}
-	tr := &http.Transport{}
-	if qs.Insecure {
-		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	if qs.Client == nil {
+		tr := &http.Transport{}
+		if qs.Insecure {
+			tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		}
+		qs.Client = &http.Client{Timeout: 30 * time.Second, Transport: tr}
 	}
-	qs.Client = &http.Client{Timeout: 30 * time.Second, Transport: tr}
 	return qs
 }
 

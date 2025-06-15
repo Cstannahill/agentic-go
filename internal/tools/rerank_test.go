@@ -36,3 +36,26 @@ func TestRemoteRerankProvider(t *testing.T) {
 		t.Fatalf("unexpected scores: %v", scores)
 	}
 }
+
+func TestRemoteRerankProviderRetry(t *testing.T) {
+	attempts := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		if attempts == 1 {
+			http.Error(w, "bad", http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(map[string]interface{}{"scores": []float64{0.5}})
+	}))
+	defer srv.Close()
+
+	p := NewRemoteRerankProvider(srv.URL)
+	p.MaxRetries = 1
+	scores, err := p.Rerank(context.Background(), "q", []string{"a"})
+	if err != nil {
+		t.Fatalf("retry rerank: %v", err)
+	}
+	if len(scores) != 1 || scores[0] != 0.5 || attempts != 2 {
+		t.Fatalf("unexpected result %v attempts=%d", scores, attempts)
+	}
+}

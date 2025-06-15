@@ -15,15 +15,18 @@ type VectorStoreConfig struct {
 
 // Config aggregates runtime settings for the pipeline tools.
 type Config struct {
-	VectorStore       VectorStoreConfig
+	// VectorStore defines connection details for the backing vector database.
+	VectorStore VectorStoreConfig
+	// EmbeddingEndpoint optionally points to a remote service used for generating embeddings.
 	EmbeddingEndpoint string
-	RerankEndpoint    string
-	VectorStore        VectorStoreConfig
-	EmbeddingEndpoint  string
-	RerankEndpoint     string
+	// RerankEndpoint optionally points to a remote service used to rerank retrieved documents.
+	RerankEndpoint string
+	// CompletionEndpoint defines where CompletionTool requests will be sent.
 	CompletionEndpoint string
-	EmbeddingDim       int
-	RetrievalTopK      int
+	// EmbeddingDim sets the dimension of the hash embedding provider when no remote service is used.
+	EmbeddingDim int
+	// RetrievalTopK specifies the default number of documents returned during retrieval.
+	RetrievalTopK int
 }
 
 // LoadFromEnv builds a Config from environment variables.
@@ -33,7 +36,6 @@ func LoadFromEnv() Config {
 	if os.Getenv("VECTORSTORE_INSECURE") == "1" {
 		insecure = true
 	}
-
 
 	embDim := 0
 	if v := os.Getenv("EMBEDDING_DIM"); v != "" {
