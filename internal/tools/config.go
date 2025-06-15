@@ -7,11 +7,16 @@ import "agentic.example.com/mvp/internal/config"
 func InitDefaults(cfg config.Config) {
 	if cfg.EmbeddingEndpoint != "" {
 		SetDefaultEmbeddingProvider(NewRemoteEmbeddingProvider(cfg.EmbeddingEndpoint))
+	} else if cfg.EmbeddingDim > 0 {
+		SetDefaultEmbeddingProvider(HashEmbeddingProvider{Dim: cfg.EmbeddingDim})
 	}
+
 	if cfg.RerankEndpoint != "" {
 		SetDefaultRerankProvider(NewRemoteRerankProvider(cfg.RerankEndpoint))
 	}
 	if cfg.CompletionEndpoint != "" {
 		SetDefaultCompletionEndpoint(cfg.CompletionEndpoint)
+	if cfg.RetrievalTopK > 0 {
+		SetDefaultTopK(cfg.RetrievalTopK)
 	}
 }
