@@ -18,15 +18,33 @@ type RemoteEmbeddingProvider struct {
 	// MaxRetries defines how many times a request should be retried on
 	// transport errors or non-2xx responses.
 	MaxRetries int
+	Headers    map[string]string
+}
+
+// RemoteEmbedOption customises a RemoteEmbeddingProvider.
+type RemoteEmbedOption func(*RemoteEmbeddingProvider)
+
+// WithEmbedHeader adds a custom HTTP header to requests.
+func WithEmbedHeader(k, v string) RemoteEmbedOption {
+	return func(r *RemoteEmbeddingProvider) {
+		if r.Headers == nil {
+			r.Headers = map[string]string{}
+		}
+		r.Headers[k] = v
+	}
 }
 
 // NewRemoteEmbeddingProvider constructs a provider targeting the given endpoint.
-func NewRemoteEmbeddingProvider(endpoint string) *RemoteEmbeddingProvider {
-	return &RemoteEmbeddingProvider{
+func NewRemoteEmbeddingProvider(endpoint string, opts ...RemoteEmbedOption) *RemoteEmbeddingProvider {
+	p := &RemoteEmbeddingProvider{
 		Endpoint:   endpoint,
 		Client:     &http.Client{Timeout: 30 * time.Second},
 		MaxRetries: 2,
 	}
+	for _, o := range opts {
+		o(p)
+	}
+	return p
 }
 
 func (r *RemoteEmbeddingProvider) Embed(ctx context.Context, text string) ([]float64, error) {
@@ -42,6 +60,9 @@ func (r *RemoteEmbeddingProvider) Embed(ctx context.Context, text string) ([]flo
 			return nil, err
 		}
 		req.Header.Set("Content-Type", "application/json")
+		for k, v := range r.Headers {
+			req.Header.Set(k, v)
+		}
 
 		resp, err := r.Client.Do(req)
 		if err == nil && resp != nil && resp.StatusCode == http.StatusOK {
@@ -66,7 +87,8 @@ func (r *RemoteEmbeddingProvider) Embed(ctx context.Context, text string) ([]flo
 			}
 			return nil, fmt.Errorf("embedding request failed")
 		}
-		time.Sleep(time.Duration(attempt+1) * 100 * time.Millisecond)
+		backoff := time.Duration(100*(1<<attempt)) * time.Millisecond
+		time.Sleep(backoff)
 	}
 	return nil, fmt.Errorf("unreachable")
 }

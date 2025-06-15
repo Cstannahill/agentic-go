@@ -10,6 +10,8 @@ The vector pipeline relies on a few environment variables to configure remote se
 | `VECTORSTORE_INSECURE` | Set to `1` to skip TLS verification. |
 | `EMBEDDING_ENDPOINT` | HTTP endpoint for generating embeddings. |
 | `RERANK_ENDPOINT` | HTTP endpoint for reranking documents. |
+| `EMBEDDING_API_KEY` | Optional auth token for the embedding service. |
+| `RERANK_API_KEY` | Optional auth token for the rerank service. |
 | `COMPLETION_ENDPOINT` | HTTP endpoint for language model completion. |
 | `EMBEDDING_DIM` | Dimension for the built-in hash embedding provider. |
 | `RETRIEVAL_TOP_K` | Default number of documents to retrieve. |

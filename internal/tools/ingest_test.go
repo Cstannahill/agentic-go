@@ -28,7 +28,7 @@ func TestIngestTool(t *testing.T) {
 		t.Fatalf("unexpected id %v", out["id"])
 	}
 
-	docs, err := store.Query(context.Background(), BasicHashEmbed("hello", 8), 1)
+        docs, err := store.Query(context.Background(), vectorstore.QueryRequest{Embedding: BasicHashEmbed("hello", 8), TopK: 1})
 	if err != nil || len(docs) == 0 || docs[0].ID != fixedID {
 		t.Fatalf("document not stored: %v %v", err, docs)
 	}

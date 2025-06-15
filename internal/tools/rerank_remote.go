@@ -15,15 +15,33 @@ type RemoteRerankProvider struct {
 	Client   *http.Client
 	// MaxRetries controls how many attempts are made on failure.
 	MaxRetries int
+	Headers    map[string]string
+}
+
+// RemoteRerankOption customises a RemoteRerankProvider.
+type RemoteRerankOption func(*RemoteRerankProvider)
+
+// WithRerankHeader adds a header to outbound requests.
+func WithRerankHeader(k, v string) RemoteRerankOption {
+	return func(r *RemoteRerankProvider) {
+		if r.Headers == nil {
+			r.Headers = map[string]string{}
+		}
+		r.Headers[k] = v
+	}
 }
 
 // NewRemoteRerankProvider creates a provider hitting the given endpoint.
-func NewRemoteRerankProvider(endpoint string) *RemoteRerankProvider {
-	return &RemoteRerankProvider{
+func NewRemoteRerankProvider(endpoint string, opts ...RemoteRerankOption) *RemoteRerankProvider {
+	p := &RemoteRerankProvider{
 		Endpoint:   endpoint,
 		Client:     &http.Client{Timeout: 30 * time.Second},
 		MaxRetries: 2,
 	}
+	for _, o := range opts {
+		o(p)
+	}
+	return p
 }
 
 func (r *RemoteRerankProvider) Rerank(ctx context.Context, query string, docs []string) ([]float64, error) {
@@ -38,6 +56,9 @@ func (r *RemoteRerankProvider) Rerank(ctx context.Context, query string, docs []
 			return nil, err
 		}
 		req.Header.Set("Content-Type", "application/json")
+		for k, v := range r.Headers {
+			req.Header.Set(k, v)
+		}
 		resp, err := r.Client.Do(req)
 		if err == nil && resp != nil && resp.StatusCode == http.StatusOK {
 			defer resp.Body.Close()
@@ -61,7 +82,8 @@ func (r *RemoteRerankProvider) Rerank(ctx context.Context, query string, docs []
 			}
 			return nil, fmt.Errorf("rerank request failed")
 		}
-		time.Sleep(time.Duration(attempt+1) * 100 * time.Millisecond)
+		backoff := time.Duration(100*(1<<attempt)) * time.Millisecond
+		time.Sleep(backoff)
 	}
 	return nil, fmt.Errorf("unreachable")
 }
