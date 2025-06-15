@@ -40,7 +40,7 @@ func TestRAGPipeline(t *testing.T) {
 	orc := NewOrchestrator()
 	input := map[string]interface{}{
 		"query":               "hello",
-		"template":            "{{.context}}",
+		"template":            "{{range .documents}}{{.metadata.text}}{{end}}",
 		"completion_endpoint": "http://localhost:8080",
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

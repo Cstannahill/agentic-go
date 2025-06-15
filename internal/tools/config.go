@@ -16,6 +16,7 @@ func InitDefaults(cfg config.Config) {
 	}
 	if cfg.CompletionEndpoint != "" {
 		SetDefaultCompletionEndpoint(cfg.CompletionEndpoint)
+	}
 	if cfg.RetrievalTopK > 0 {
 		SetDefaultTopK(cfg.RetrievalTopK)
 	}
