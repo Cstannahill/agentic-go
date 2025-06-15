@@ -28,10 +28,12 @@ allow tuning relevance without code changes.
     `RemoteEmbeddingProvider`, etc.).
   * `RetrievalTool` – queries a configured `VectorStore`.
   * `RerankTool` – orders documents using a `RerankProvider` when available.
+  * `IngestTool` – embeds text and stores it in the configured `VectorStore`.
 * `internal/agent` – Agents wrapping the tools so they can run as pipeline steps:
   * `EmbeddingAgent`
   * `RetrievalAgent`
   * `RerankAgent`
+  * `IngestAgent`
 
 ## Remaining Work
 
@@ -45,8 +47,9 @@ be considered production ready:
    based on query relevance. The `RemoteRerankProvider` is a placeholder for this.
 3. **Observability** – add structured logging and Prometheus metrics around all
    vector operations.
-4. **Dataset Management** – support bulk imports and incremental updates beyond
-   the simple upsert/delete calls now implemented.
+4. **Dataset Management** – the new `IngestTool` and `IngestAgent` provide a
+   simple path for adding documents, but bulk import and update workflows are
+   still needed.
 5. **Configuration Loader** – expose helper functions to read YAML/JSON configs
    so environments can be provisioned without recompilation.
 6. **Production Configuration** – tune embedding dimension and retrieval depth
