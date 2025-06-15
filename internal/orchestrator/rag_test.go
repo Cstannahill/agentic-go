@@ -40,7 +40,7 @@ func TestRAGPipeline(t *testing.T) {
 	orc := NewOrchestrator()
 	input := map[string]interface{}{
 		"query":               "hello",
-		"template":            "{{range .documents}}{{.metadata.text}}{{end}}",
+		"template":            "{{.retrieved_context}}",
 		"completion_endpoint": "http://localhost:8080",
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -50,7 +50,7 @@ func TestRAGPipeline(t *testing.T) {
 		t.Fatalf("pipeline error: %v", err)
 	}
 	resp, ok := ExtractRAGResponse(data)
-	if !ok || resp.Answer != "test" || len(resp.Documents) == 0 {
+	if !ok || resp.Answer != "test" || len(resp.Documents) == 0 || resp.Context != "hello\nhello" {
 		t.Fatalf("unexpected response: %#v", resp)
 	}
 }

@@ -74,6 +74,20 @@ func BuildRAGPipeline(id string, opts RAGPipelineOptions) Pipeline {
 			},
 		},
 		{
+			Name: "context",
+			Steps: []PipelineStep{
+				{
+					Name:        "build_context",
+					AgentType:   "ContextBuilderAgent",
+					AgentConfig: agent.Task{Description: "Format retrieved context"},
+					InputMappings: map[string]string{
+						"documents": "rerank_docs.default_output.reranked",
+						"extra":     "initial.extra_context",
+					},
+				},
+			},
+		},
+		{
 			Name: "prompt",
 			Steps: []PipelineStep{
 				{
@@ -84,7 +98,7 @@ func BuildRAGPipeline(id string, opts RAGPipelineOptions) Pipeline {
 						"template":  "initial.template",
 						"documents": "rerank_docs.default_output.reranked",
 						"query":     "initial.query",
-						"context":   "initial.extra_context",
+						"context":   "build_context.default_output",
 					},
 				},
 			},
@@ -122,7 +136,7 @@ func BuildRAGPipeline(id string, opts RAGPipelineOptions) Pipeline {
 						"documents": "rerank_docs.default_output.reranked",
 						"query":     "initial.query",
 						"answer":    "generate_answer.default_output.completion",
-						"context":   "initial.extra_context",
+						"context":   "build_context.default_output",
 					},
 				},
 				{
@@ -163,6 +177,7 @@ type RAGResponse struct {
 	Documents []ContextDocument `json:"documents"`
 	Model     string            `json:"model,omitempty"`
 	Prompt    string            `json:"prompt,omitempty"`
+	Context   string            `json:"context,omitempty"`
 	Reasoning string            `json:"reasoning,omitempty"`
 }
 
@@ -179,6 +194,8 @@ func ExtractRAGResponse(data StepData) (RAGResponse, bool) {
 	}
 	answer, _ := genOut["completion"].(string)
 	prompt, _ := data["build_prompt.default_output"].(map[string]interface{})
+	ctxMap, _ := data["build_context.default_output"].(map[string]interface{})
+	formattedCtx, _ := ctxMap["retrieved_context"].(string)
 	query, _ := data["initial.query"].(string)
 	model, _ := data["initial.model"].(string)
 	ctx, _ := rerankOut["reranked"].([]map[string]interface{})
@@ -201,5 +218,5 @@ func ExtractRAGResponse(data StepData) (RAGResponse, bool) {
 	if prompt != nil {
 		pr, _ = prompt["prompt"].(string)
 	}
-	return RAGResponse{Query: query, Answer: answer, Documents: docs, Model: model, Prompt: pr, Reasoning: reasoning}, true
+	return RAGResponse{Query: query, Answer: answer, Documents: docs, Model: model, Prompt: pr, Context: formattedCtx, Reasoning: reasoning}, true
 }
