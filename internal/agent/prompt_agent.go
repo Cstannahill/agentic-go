@@ -48,6 +48,9 @@ func (p *PromptAgent) Execute(ctx context.Context, task Task) Result {
 	if q, ok := task.Input["query"].(string); ok {
 		data["query"] = q
 	}
+	if a, ok := task.Input["answer"].(string); ok {
+		data["answer"] = a
+	}
 
 	tmpl, err := template.New("prompt").Parse(tmplStr)
 	if err != nil {

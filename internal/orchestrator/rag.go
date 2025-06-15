@@ -15,6 +15,11 @@ type RAGPipelineOptions struct {
 	// DefaultCompletionEndpoint specifies the HTTP endpoint used by the
 	// GenerationAgent when no override is supplied at runtime.
 	DefaultCompletionEndpoint string
+
+	// EnableReasoning adds an additional reasoning step using a second
+	// GenerationAgent call. The template must be supplied at runtime under
+	// the key `reason_template`.
+	EnableReasoning bool
 }
 
 // BuildRAGPipeline returns a preconfigured retrieval augmented generation pipeline.
@@ -22,90 +27,121 @@ type RAGPipelineOptions struct {
 // the initial input omits them. At minimum a `query` and prompt `template`
 // must be supplied.
 func BuildRAGPipeline(id string, opts RAGPipelineOptions) Pipeline {
-	return Pipeline{
-		ID:          id,
-		Description: "retrieval augmented generation",
-		Groups: []PipelineGroup{
-			{
-				Name: "embed",
-				Steps: []PipelineStep{
-					{
-						Name:        "embed_query",
-						AgentType:   "EmbeddingAgent",
-						AgentConfig: agent.Task{Description: "Embed user query"},
-						InputMappings: map[string]string{
-							"text": "initial.query",
-						},
+	groups := []PipelineGroup{
+		{
+			Name: "embed",
+			Steps: []PipelineStep{
+				{
+					Name:        "embed_query",
+					AgentType:   "EmbeddingAgent",
+					AgentConfig: agent.Task{Description: "Embed user query"},
+					InputMappings: map[string]string{
+						"text": "initial.query",
 					},
 				},
 			},
-			{
-				Name: "retrieve",
-				Steps: []PipelineStep{
-					{
-						Name:      "retrieve_docs",
-						AgentType: "RetrievalAgent",
-						AgentConfig: agent.Task{
-							Description: "Retrieve documents",
-							Input:       map[string]interface{}{"top_k": opts.DefaultTopK},
-						},
-						InputMappings: map[string]string{
-							"embedding": "embed_query.default_output.embedding",
-							"top_k":     "initial.top_k",
-						},
+		},
+		{
+			Name: "retrieve",
+			Steps: []PipelineStep{
+				{
+					Name:      "retrieve_docs",
+					AgentType: "RetrievalAgent",
+					AgentConfig: agent.Task{
+						Description: "Retrieve documents",
+						Input:       map[string]interface{}{"top_k": opts.DefaultTopK},
+					},
+					InputMappings: map[string]string{
+						"embedding": "embed_query.default_output.embedding",
+						"top_k":     "initial.top_k",
 					},
 				},
 			},
-			{
-				Name: "rerank",
-				Steps: []PipelineStep{
-					{
-						Name:        "rerank_docs",
-						AgentType:   "RerankAgent",
-						AgentConfig: agent.Task{Description: "Rerank documents"},
-						InputMappings: map[string]string{
-							"documents": "retrieve_docs.default_output.documents",
-							"query":     "initial.query",
-						},
+		},
+		{
+			Name: "rerank",
+			Steps: []PipelineStep{
+				{
+					Name:        "rerank_docs",
+					AgentType:   "RerankAgent",
+					AgentConfig: agent.Task{Description: "Rerank documents"},
+					InputMappings: map[string]string{
+						"documents": "retrieve_docs.default_output.documents",
+						"query":     "initial.query",
 					},
 				},
 			},
-			{
-				Name: "prompt",
-				Steps: []PipelineStep{
-					{
-						Name:        "build_prompt",
-						AgentType:   "PromptAgent",
-						AgentConfig: agent.Task{Description: "Inject context"},
-						InputMappings: map[string]string{
-							"template":  "initial.template",
-							"documents": "rerank_docs.default_output.reranked",
-							"query":     "initial.query",
-							"context":   "initial.extra_context",
-						},
+		},
+		{
+			Name: "prompt",
+			Steps: []PipelineStep{
+				{
+					Name:        "build_prompt",
+					AgentType:   "PromptAgent",
+					AgentConfig: agent.Task{Description: "Inject context"},
+					InputMappings: map[string]string{
+						"template":  "initial.template",
+						"documents": "rerank_docs.default_output.reranked",
+						"query":     "initial.query",
+						"context":   "initial.extra_context",
 					},
 				},
 			},
-			{
-				Name: "generate",
-				Steps: []PipelineStep{
-					{
-						Name:      "generate_answer",
-						AgentType: "GenerationAgent",
-						AgentConfig: agent.Task{
-							Description: "Generate final answer",
-							Input:       map[string]interface{}{"endpoint": opts.DefaultCompletionEndpoint},
-						},
-						InputMappings: map[string]string{
-							"prompt":   "build_prompt.default_output.prompt",
-							"model":    "initial.model",
-							"endpoint": "initial.completion_endpoint",
-						},
+		},
+		{
+			Name: "generate",
+			Steps: []PipelineStep{
+				{
+					Name:      "generate_answer",
+					AgentType: "GenerationAgent",
+					AgentConfig: agent.Task{
+						Description: "Generate final answer",
+						Input:       map[string]interface{}{"endpoint": opts.DefaultCompletionEndpoint},
+					},
+					InputMappings: map[string]string{
+						"prompt":   "build_prompt.default_output.prompt",
+						"model":    "initial.model",
+						"endpoint": "initial.completion_endpoint",
 					},
 				},
 			},
 		},
 	}
+
+	if opts.EnableReasoning {
+		groups = append(groups, PipelineGroup{
+			Name: "reason",
+			Steps: []PipelineStep{
+				{
+					Name:        "build_reason_prompt",
+					AgentType:   "PromptAgent",
+					AgentConfig: agent.Task{Description: "Build reasoning prompt"},
+					InputMappings: map[string]string{
+						"template":  "initial.reason_template",
+						"documents": "rerank_docs.default_output.reranked",
+						"query":     "initial.query",
+						"answer":    "generate_answer.default_output.completion",
+						"context":   "initial.extra_context",
+					},
+				},
+				{
+					Name:      "generate_reasoning",
+					AgentType: "GenerationAgent",
+					AgentConfig: agent.Task{
+						Description: "Generate reasoning",
+						Input:       map[string]interface{}{"endpoint": opts.DefaultCompletionEndpoint},
+					},
+					InputMappings: map[string]string{
+						"prompt":   "build_reason_prompt.default_output.prompt",
+						"model":    "initial.model",
+						"endpoint": "initial.completion_endpoint",
+					},
+				},
+			},
+		})
+	}
+
+	return Pipeline{ID: id, Description: "retrieval augmented generation", Groups: groups}
 }
 
 // DefaultRAGPipeline constructs a pipeline using zero options for callers that
@@ -126,6 +162,7 @@ type RAGResponse struct {
 	Documents []ContextDocument `json:"documents"`
 	Model     string            `json:"model,omitempty"`
 	Prompt    string            `json:"prompt,omitempty"`
+	Reasoning string            `json:"reasoning,omitempty"`
 }
 
 // ExtractRAGResponse builds a structured RAGResponse from StepData
@@ -157,9 +194,11 @@ func ExtractRAGResponse(data StepData) (RAGResponse, bool) {
 			docs[i].Score = score
 		}
 	}
+	reasonOut, _ := data["generate_reasoning.default_output"].(map[string]interface{})
+	reasoning, _ := reasonOut["completion"].(string)
 	pr := ""
 	if prompt != nil {
 		pr, _ = prompt["prompt"].(string)
 	}
-	return RAGResponse{Query: query, Answer: answer, Documents: docs, Model: model, Prompt: pr}, true
+	return RAGResponse{Query: query, Answer: answer, Documents: docs, Model: model, Prompt: pr, Reasoning: reasoning}, true
 }
