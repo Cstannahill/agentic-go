@@ -40,14 +40,23 @@ allow tuning relevance without code changes.
 The `QdrantStore` constructor accepts options for API keys, TLS behaviour and a
 custom `http.Client` so deployments can tune connection settings.
 
+### Recent Additions
+
+- `VectorStore.Query` now accepts a `QueryRequest` struct with optional
+  metadata `Filter` enabling server side filtering.
+- `RemoteEmbeddingProvider` and `RemoteRerankProvider` support custom HTTP
+  headers (e.g. API tokens) and use exponential backoff on retry.
+- Configuration variables `EMBEDDING_API_KEY` and `RERANK_API_KEY` pass these
+  tokens to the providers.
+
 ## Remaining Work
 
 These steps will take the foundation here to a live-ready state while keeping
 the API surface stable.
 
 1. **Authentication & TLS** – secure connections to the remote vector store and
-   embedding service. Qdrant API key support has landed but certificate
-   validation and token based auth need wiring up.
+   embedding/ rerank services. Basic API token support is in place but
+   certificate validation and OAuth flows still need wiring up.
 2. **Advanced Reranking** – integrate a cross-encoder model to score documents
    based on query relevance. The `RemoteRerankProvider` is a placeholder for
    this.

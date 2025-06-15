@@ -55,8 +55,22 @@ func cosineSimilarity(a, b []float64) float64 {
 	return dot / (math.Sqrt(normA) * math.Sqrt(normB))
 }
 
-// Query returns the k most similar documents.
-func (m *MemoryStore) Query(ctx context.Context, emb []float64, k int) ([]Document, error) {
+func matchesFilter(meta map[string]interface{}, filter map[string]interface{}) bool {
+	if len(filter) == 0 {
+		return true
+	}
+	for k, v := range filter {
+		if meta[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
+// Query returns the most similar documents subject to an optional filter.
+func (m *MemoryStore) Query(ctx context.Context, req QueryRequest) ([]Document, error) {
+	emb := req.Embedding
+	k := req.TopK
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	type scored struct {
@@ -65,6 +79,9 @@ func (m *MemoryStore) Query(ctx context.Context, emb []float64, k int) ([]Docume
 	}
 	var scoredDocs []scored
 	for _, d := range m.docs {
+		if !matchesFilter(d.Metadata, req.Filter) {
+			continue
+		}
 		s := cosineSimilarity(d.Embedding, emb)
 		scoredDocs = append(scoredDocs, scored{doc: d, score: s})
 	}

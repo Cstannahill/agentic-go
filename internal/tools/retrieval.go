@@ -47,7 +47,8 @@ func (r *RetrievalTool) Run(ctx context.Context, input map[string]interface{}) (
 	if r.Store == nil {
 		r.Store = vectorstore.DefaultStore()
 	}
-	docs, err := r.Store.Query(ctx, emb, r.TopK)
+	filter, _ := input["filter"].(map[string]interface{})
+	docs, err := r.Store.Query(ctx, vectorstore.QueryRequest{Embedding: emb, TopK: r.TopK, Filter: filter})
 	if err != nil {
 		return nil, err
 	}

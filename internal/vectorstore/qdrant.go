@@ -93,10 +93,13 @@ func (q *QdrantStore) Upsert(ctx context.Context, docs []Document) error {
 	return nil
 }
 
-func (q *QdrantStore) Query(ctx context.Context, embedding []float64, k int) ([]Document, error) {
+func (q *QdrantStore) Query(ctx context.Context, qr QueryRequest) ([]Document, error) {
 	reqBody := map[string]interface{}{
-		"vector": embedding,
-		"limit":  k,
+		"vector": qr.Embedding,
+		"limit":  qr.TopK,
+	}
+	if len(qr.Filter) > 0 {
+		reqBody["filter"] = qr.Filter
 	}
 	body, err := json.Marshal(reqBody)
 	if err != nil {
@@ -104,16 +107,16 @@ func (q *QdrantStore) Query(ctx context.Context, embedding []float64, k int) ([]
 	}
 
 	url := fmt.Sprintf("%s/collections/%s/points/search", q.Endpoint, q.Collection)
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Content-Type", "application/json")
 	if q.APIKey != "" {
-		req.Header.Set("api-key", q.APIKey)
+		httpReq.Header.Set("api-key", q.APIKey)
 	}
 
-	resp, err := q.Client.Do(req)
+	resp, err := q.Client.Do(httpReq)
 	if err != nil {
 		return nil, err
 	}

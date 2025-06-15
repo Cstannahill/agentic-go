@@ -17,9 +17,11 @@ type VectorStoreConfig struct {
 // Config aggregates runtime settings for the pipeline tools.
 // Values may be empty when the corresponding environment variables are unset.
 type Config struct {
-	VectorStore        VectorStoreConfig
-	EmbeddingEndpoint  string
-	RerankEndpoint     string
+	VectorStore       VectorStoreConfig
+	EmbeddingEndpoint string
+	EmbeddingAPIKey   string
+	RerankEndpoint    string
+	RerankAPIKey      string
 	// VectorStore defines connection details for the backing vector database.
 
 	// EmbeddingEndpoint optionally points to a remote service used for generating embeddings.
@@ -62,7 +64,9 @@ func LoadFromEnv() Config {
 			Insecure:   insecure,
 		},
 		EmbeddingEndpoint:  os.Getenv("EMBEDDING_ENDPOINT"),
+		EmbeddingAPIKey:    os.Getenv("EMBEDDING_API_KEY"),
 		RerankEndpoint:     os.Getenv("RERANK_ENDPOINT"),
+		RerankAPIKey:       os.Getenv("RERANK_API_KEY"),
 		CompletionEndpoint: os.Getenv("COMPLETION_ENDPOINT"),
 		EmbeddingDim:       embDim,
 		RetrievalTopK:      topK,

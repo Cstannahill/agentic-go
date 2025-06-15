@@ -9,7 +9,7 @@ func TestMemoryStore(t *testing.T) {
 	if err := store.Upsert(nil, []Document{doc}); err != nil {
 		t.Fatalf("upsert: %v", err)
 	}
-	results, err := store.Query(nil, []float64{1, 0}, 1)
+        results, err := store.Query(nil, QueryRequest{Embedding: []float64{1, 0}, TopK: 1})
 	if err != nil {
 		t.Fatalf("query: %v", err)
 	}
@@ -23,7 +23,7 @@ func TestMemoryStore(t *testing.T) {
 	if err := store.Delete(nil, []string{"1"}); err != nil {
 		t.Fatalf("delete: %v", err)
 	}
-	results, err = store.Query(nil, []float64{1, 0}, 1)
+        results, err = store.Query(nil, QueryRequest{Embedding: []float64{1, 0}, TopK: 1})
 	if err != nil {
 		t.Fatalf("query after delete: %v", err)
 	}

@@ -10,10 +10,17 @@ type Document struct {
 	Score     float64 // optional score returned by queries
 }
 
+// QueryRequest describes a retrieval operation.
+type QueryRequest struct {
+	Embedding []float64
+	TopK      int
+	Filter    map[string]interface{}
+}
+
 // VectorStore defines the operations supported by a store.
 type VectorStore interface {
 	Upsert(ctx context.Context, docs []Document) error
-	Query(ctx context.Context, embedding []float64, k int) ([]Document, error)
+	Query(ctx context.Context, req QueryRequest) ([]Document, error)
 	Delete(ctx context.Context, ids []string) error
 }
 
