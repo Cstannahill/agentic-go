@@ -14,14 +14,20 @@ early testing of end to end flows.
    extra context into a templated prompt.
 5. **GenerationAgent** – Sends the prompt to the Universal MCP endpoint and
    returns the completion text.
+6. **Reasoning Step (optional)** – When enabled, the pipeline builds a second
+   prompt containing the first answer and source context. Another
+   `GenerationAgent` call produces a natural language explanation which is
+   returned as part of the `RAGResponse`.
 
 `internal/orchestrator.BuildRAGPipeline` wires these steps together. Callers may
 provide `RAGPipelineOptions` to define defaults such as retrieval depth or the
 generation endpoint. The initial input must include a user `query` and a prompt
-`template`. Optional fields include `model`, `top_k`, `completion_endpoint` and
-`extra_context`. After execution, `ExtractRAGResponse` converts the raw
+`template`. Optional fields include `model`, `top_k`, `completion_endpoint`,
+`extra_context` and `reason_template`.  When `EnableReasoning` is set in
+`RAGPipelineOptions`, the `reason_template` is used to craft a second prompt for
+explanations. After execution, `ExtractRAGResponse` converts the raw
 `StepData` into a `RAGResponse` struct containing the original query, generated
-answer and the list of injected `ContextDocument` values.
+answer, reasoning text and the list of injected `ContextDocument` values.
 
 Each component runs as an agent so steps may execute concurrently where
 possible.  The `PromptAgent` and `GenerationAgent` now accept runtime options
@@ -48,6 +54,11 @@ against real services.
   allow consistent updates across deployments.
 - **Better context filtering** – improved similarity scoring and heuristics will
   ensure only the most relevant documents are injected into the prompt.
+- **Reasoning step refinement** – develop prompt patterns and heuristics so the
+  optional reasoning generation consistently explains how the answer was
+  produced.
+- **Response schemas** – formalise the structure returned by the pipeline so
+  downstream services can consume answers and reasoning without ad-hoc parsing.
 
 These tasks will harden the pipeline for real workloads while keeping the
 interfaces stable.
