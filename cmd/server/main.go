@@ -25,6 +25,27 @@ type executeResponse struct {
 func main() {
 	cfg := config.LoadFromEnv()
 
+	if cfg.VectorStore.Endpoint != "" && cfg.VectorStore.Collection != "" {
+		opts := []vectorstore.QdrantOption{}
+		if cfg.VectorStore.APIKey != "" {
+			opts = append(opts, vectorstore.WithAPIKey(cfg.VectorStore.APIKey))
+		}
+		if cfg.VectorStore.Insecure {
+			opts = append(opts, vectorstore.WithInsecureSkipVerify())
+		}
+		vectorstore.SetDefaultStore(
+			vectorstore.NewQdrantStore(cfg.VectorStore.Endpoint, cfg.VectorStore.Collection, opts...),
+		)
+	} else {
+		vectorstore.SetDefaultStore(vectorstore.NewMemoryStore())
+	}
+
+	if cfg.EmbeddingEndpoint != "" {
+		tools.SetDefaultEmbeddingProvider(tools.NewRemoteEmbeddingProvider(cfg.EmbeddingEndpoint))
+	}
+	if cfg.RerankEndpoint != "" {
+		tools.SetDefaultRerankProvider(tools.NewRemoteRerankProvider(cfg.RerankEndpoint))
+	}
 	vectorstore.InitDefault(cfg.VectorStore)
 	tools.InitDefaults(cfg)
 

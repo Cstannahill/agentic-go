@@ -13,5 +13,4 @@ The vector pipeline relies on a few environment variables to configure remote se
 | `COMPLETION_ENDPOINT` | HTTP endpoint for language model completion. |
 | `EMBEDDING_DIM` | Dimension for the built-in hash embedding provider. |
 | `RETRIEVAL_TOP_K` | Default number of documents to retrieve. |
-
 Applications can load these settings via `config.LoadFromEnv()` and use them to initialise the default tools and stores.
