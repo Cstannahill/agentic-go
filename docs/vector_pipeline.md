@@ -81,3 +81,37 @@ while keeping the public API stable.
 9. **Failure Handling** – surface structured errors from tools and implement
    retry logic around transient network failures beyond the current best-effort
    approach.
+### Short-term Hardening Tasks
+
+The above list highlights the baseline work still pending. To transform the
+pipeline from a prototype into an early production service we also need to
+address a number of practical concerns:
+
+- **Connection pooling and timeouts** – ensure the HTTP clients for Qdrant and
+  remote providers expose configurable timeouts and use connection pools. This
+  prevents resource exhaustion when multiple goroutines are ingesting or
+  querying concurrently.
+- **Input validation** – provide helper functions that sanity check document
+  metadata and embedding dimensions before storage. Invalid data should surface
+  clear errors.
+- **Batch operations** – implement `VectorStore` helpers for bulk upsert and
+  delete so large ingests run efficiently.
+- **Schema versioning** – track a version field in document metadata so older
+  vectors can be migrated when embedding models change.
+- **Context-aware retrieval** – add hooks for per-request filtering based on
+  user or conversation context.
+
+### Exploratory Opportunities
+
+Looking forward, several ideas could further boost accuracy and throughput:
+
+- **Hybrid search** – combine vector similarity with keyword search to better
+  handle rare terms.
+- **Approximate indexing** – use HNSW or product quantization indexes in
+  Qdrant to accelerate large scale queries.
+- **Adaptive reranking models** – explore cross-encoders that incorporate
+  temporal or location cues from metadata.
+- **Embedding cache** – memoize embeddings for frequently seen inputs to avoid
+  redundant remote calls.
+- **Online evaluation hooks** – log retrieval results and answer quality so the
+  ranking models can be continuously refined.
