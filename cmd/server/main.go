@@ -46,6 +46,8 @@ func main() {
 	if cfg.RerankEndpoint != "" {
 		tools.SetDefaultRerankProvider(tools.NewRemoteRerankProvider(cfg.RerankEndpoint))
 	}
+	vectorstore.InitDefault(cfg.VectorStore)
+	tools.InitDefaults(cfg)
 
 	orc := orchestrator.NewOrchestrator()
 

@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"agentic.example.com/mvp/internal/agent"
@@ -155,6 +156,38 @@ func (o *Orchestrator) ExecutePipeline(ctx context.Context, p Pipeline, initialI
 
 // resolveSourcePath retrieves a value from StepData based on a simple path.
 func resolveSourcePath(data StepData, path string) (interface{}, bool) {
-	val, ok := data[path]
-	return val, ok
+	// First try exact key match which preserves backwards compatibility.
+	if val, ok := data[path]; ok {
+		return val, true
+	}
+
+	// Support dotted paths for nested map lookups. A path like
+	// "step.output.field" will attempt to resolve "step.output" from
+	// StepData and then drill into the resulting map for "field".
+	parts := strings.Split(path, ".")
+	for i := len(parts) - 1; i > 0; i-- {
+		key := strings.Join(parts[:i], ".")
+		val, ok := data[key]
+		if !ok {
+			continue
+		}
+		cur := val
+		found := true
+		for _, p := range parts[i:] {
+			m, ok := cur.(map[string]interface{})
+			if !ok {
+				found = false
+				break
+			}
+			cur, ok = m[p]
+			if !ok {
+				found = false
+				break
+			}
+		}
+		if found {
+			return cur, true
+		}
+	}
+	return nil, false
 }

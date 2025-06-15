@@ -20,7 +20,15 @@ type RetrievalAgent struct {
 func NewRetrievalAgent() *RetrievalAgent {
 	return &RetrievalAgent{
 		id:   fmt.Sprintf("retrieval-agent-%s", uuid.NewString()),
-		tool: tools.NewRetrievalTool(vectorstore.DefaultStore(), 5),
+		tool: tools.NewRetrievalTool(vectorstore.DefaultStore(), tools.DefaultTopK()),
+	}
+}
+
+// NewRetrievalAgentWithK allows configuring the number of documents to return.
+func NewRetrievalAgentWithK(k int) *RetrievalAgent {
+	return &RetrievalAgent{
+		id:   fmt.Sprintf("retrieval-agent-%s", uuid.NewString()),
+		tool: tools.NewRetrievalTool(vectorstore.DefaultStore(), k),
 	}
 }
 

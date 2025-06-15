@@ -12,7 +12,15 @@ Runtime options for connecting to external services are described in [docs/confi
 - **Pipeline Orchestrator** – Executes ordered groups of steps.  Steps within a group run in their own goroutine and communicate results via channels.
 - **Tool Interfaces** – Stubs for embedding, retrieval and reranking demonstrate how external capabilities plug in.
 - **HTTP Server Example** – `cmd/server` exposes pipeline execution through a simple API.
+- **Configurable Retrieval** – `EMBEDDING_DIM` and `RETRIEVAL_TOP_K` environment
+  variables allow tuning default embedding size and number of documents
+  returned without recompiling.
 - **Data Transform Agent** – Performs basic string manipulation operations.
+- **Ingest Agents and Tools** – Easily embed and store new documents in the
+  configured vector database.
+- **RAG Generation Pipeline** – Embedding, retrieval, context injection and generation agents ready for early testing.
+- **Pipeline Builder** – `BuildRAGPipeline` returns a ready-to-run pipeline and
+  `ExtractRAGResponse` transforms raw results into a simple struct.
 
 ## Example
 
