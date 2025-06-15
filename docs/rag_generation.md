@@ -10,11 +10,13 @@ early testing of end to end flows.
    `EmbeddingProvider`.
 2. **RetrievalAgent** – Looks up similar documents from the `VectorStore`.
 3. **RerankAgent** – Orders the retrieved documents by relevance score.
-4. **PromptAgent** – Injects the retrieved documents, original query and any
-   extra context into a templated prompt.
-5. **GenerationAgent** – Sends the prompt to the Universal MCP endpoint and
+4. **ContextBuilderAgent** – Collates the reranked documents and optional extra
+   context into a formatted string ready for prompting.
+5. **PromptAgent** – Injects the retrieved documents, original query and
+   formatted context into a templated prompt.
+6. **GenerationAgent** – Sends the prompt to the Universal MCP endpoint and
    returns the completion text.
-6. **Reasoning Step (optional)** – When enabled, the pipeline builds a second
+7. **Reasoning Step (optional)** – When enabled, the pipeline builds a second
    prompt containing the first answer and source context. Another
    `GenerationAgent` call produces a natural language explanation which is
    returned as part of the `RAGResponse`.
@@ -27,7 +29,8 @@ generation endpoint. The initial input must include a user `query` and a prompt
 `RAGPipelineOptions`, the `reason_template` is used to craft a second prompt for
 explanations. After execution, `ExtractRAGResponse` converts the raw
 `StepData` into a `RAGResponse` struct containing the original query, generated
-answer, reasoning text and the list of injected `ContextDocument` values.
+answer, the formatted context string, reasoning text and the list of injected
+`ContextDocument` values.
 
 Each component runs as an agent so steps may execute concurrently where
 possible.  The `PromptAgent` and `GenerationAgent` now accept runtime options

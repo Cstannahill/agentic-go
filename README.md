@@ -18,7 +18,7 @@ Runtime options for connecting to external services are described in [docs/confi
 - **Data Transform Agent** – Performs basic string manipulation operations.
 - **Ingest Agents and Tools** – Easily embed and store new documents in the
   configured vector database.
-- **RAG Generation Pipeline** – Embedding, retrieval, context injection and generation agents ready for early testing.
+- **RAG Generation Pipeline** – Embedding, retrieval, context formatting and generation agents ready for early testing.
 - **Pipeline Builder** – `BuildRAGPipeline` constructs a ready-to-run pipeline with optional defaults, and
   `ExtractRAGResponse` transforms raw results into a structured `RAGResponse`.
 
