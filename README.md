@@ -5,6 +5,7 @@ This repository experiments with an extensible orchestration layer for building 
 See [docs/architecture.md](docs/architecture.md) for a deeper architectural overview and the project roadmap. The
 [Universal MCP Layer](docs/universal_mcp.md) document explains how remote models are unified behind a single gateway.
 Runtime options for connecting to external services are described in [docs/configuration.md](docs/configuration.md).
+Ideas for future agent orchestration patterns live in [docs/flow_patterns.md](docs/flow_patterns.md).
 
 ## Features
 
