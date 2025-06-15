@@ -41,13 +41,15 @@ func getNested(m map[string]interface{}, path string) (interface{}, bool) {
 
 // Execute expects input keys:
 //
-//	documents - slice of document maps from retrieval
-//	field     - optional dotted path within each document to extract (defaults to "metadata.text")
-//	separator - optional join string used between documents (defaults to "\n")
-//	extra     - optional map merged into the output context
+//	documents  - slice of document maps from retrieval
+//	field      - optional dotted path within each document to extract (defaults to "metadata.text")
+//	separator  - optional join string used between documents (defaults to "\n")
+//	max_chars  - optional integer limiting the length of the combined context
+//	extra      - optional map merged into the output context
 //
 // The output is a map[string]interface{} that can be provided directly to PromptAgent
-// under its "context" input.
+// under its "context" input. When max_chars is set and the context is truncated,
+// a boolean `truncated` field will also be present.
 func (c *ContextBuilderAgent) Execute(ctx context.Context, task Task) Result {
 	docs, ok := task.Input["documents"].([]map[string]interface{})
 	if !ok {
@@ -61,6 +63,7 @@ func (c *ContextBuilderAgent) Execute(ctx context.Context, task Task) Result {
 	if sep == "" {
 		sep = "\n"
 	}
+	maxChars, _ := task.Input["max_chars"].(int)
 
 	var parts []string
 	for _, d := range docs {
@@ -71,7 +74,15 @@ func (c *ContextBuilderAgent) Execute(ctx context.Context, task Task) Result {
 		}
 	}
 	combined := strings.Join(parts, sep)
+	truncated := false
+	if maxChars > 0 && len(combined) > maxChars {
+		combined = combined[:maxChars]
+		truncated = true
+	}
 	contextMap := map[string]interface{}{"retrieved_context": combined}
+	if truncated {
+		contextMap["truncated"] = true
+	}
 	if extra, ok := task.Input["extra"].(map[string]interface{}); ok {
 		for k, v := range extra {
 			contextMap[k] = v

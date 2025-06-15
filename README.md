@@ -21,6 +21,8 @@ Ideas for future agent orchestration patterns live in [docs/flow_patterns.md](do
   configured vector database.
 - **Setup Package** – `setup.InitFromEnv` bootstraps the vector store and providers from environment variables.
 - **Metadata Filters** – retrieval agents can accept a `filter` map for precise queries.
+- **Configurable Context Building** – callers may control which document field is injected,
+  the separator and a maximum context length.
 - **RAG Generation Pipeline** – Embedding, retrieval, context formatting and generation agents ready for early testing.
 - **Pipeline Builder** – `BuildRAGPipeline` constructs a ready-to-run pipeline with optional defaults, and
   `ExtractRAGResponse` transforms raw results into a structured `RAGResponse`.

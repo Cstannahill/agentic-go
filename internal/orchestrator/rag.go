@@ -16,6 +16,18 @@ type RAGPipelineOptions struct {
 	// GenerationAgent when no override is supplied at runtime.
 	DefaultCompletionEndpoint string
 
+	// DefaultContextField specifies which field the ContextBuilderAgent
+	// extracts from each document when not provided by the caller.
+	DefaultContextField string
+
+	// DefaultSeparator defines the string used to join documents in the
+	// retrieved context when not supplied in the initial input.
+	DefaultSeparator string
+
+	// DefaultMaxContextChars limits the length of the combined context when
+	// the caller does not specify `max_chars`.
+	DefaultMaxContextChars int
+
 	// EnableReasoning adds an additional reasoning step using a second
 	// GenerationAgent call. The template must be supplied at runtime under
 	// the key `reason_template`.
@@ -77,12 +89,22 @@ func BuildRAGPipeline(id string, opts RAGPipelineOptions) Pipeline {
 			Name: "context",
 			Steps: []PipelineStep{
 				{
-					Name:        "build_context",
-					AgentType:   "ContextBuilderAgent",
-					AgentConfig: agent.Task{Description: "Format retrieved context"},
+					Name:      "build_context",
+					AgentType: "ContextBuilderAgent",
+					AgentConfig: agent.Task{
+						Description: "Format retrieved context",
+						Input: map[string]interface{}{
+							"field":     opts.DefaultContextField,
+							"separator": opts.DefaultSeparator,
+							"max_chars": opts.DefaultMaxContextChars,
+						},
+					},
 					InputMappings: map[string]string{
 						"documents": "rerank_docs.default_output.reranked",
 						"extra":     "initial.extra_context",
+						"field":     "initial.context_field",
+						"separator": "initial.context_separator",
+						"max_chars": "initial.context_max_chars",
 					},
 				},
 			},
@@ -172,13 +194,14 @@ type ContextDocument struct {
 }
 
 type RAGResponse struct {
-	Query     string            `json:"query"`
-	Answer    string            `json:"answer"`
-	Documents []ContextDocument `json:"documents"`
-	Model     string            `json:"model,omitempty"`
-	Prompt    string            `json:"prompt,omitempty"`
-	Context   string            `json:"context,omitempty"`
-	Reasoning string            `json:"reasoning,omitempty"`
+	Query            string            `json:"query"`
+	Answer           string            `json:"answer"`
+	Documents        []ContextDocument `json:"documents"`
+	Model            string            `json:"model,omitempty"`
+	Prompt           string            `json:"prompt,omitempty"`
+	Context          string            `json:"context,omitempty"`
+	ContextTruncated bool              `json:"context_truncated,omitempty"`
+	Reasoning        string            `json:"reasoning,omitempty"`
 }
 
 // ExtractRAGResponse builds a structured RAGResponse from StepData
@@ -196,6 +219,7 @@ func ExtractRAGResponse(data StepData) (RAGResponse, bool) {
 	prompt, _ := data["build_prompt.default_output"].(map[string]interface{})
 	ctxMap, _ := data["build_context.default_output"].(map[string]interface{})
 	formattedCtx, _ := ctxMap["retrieved_context"].(string)
+	truncated, _ := ctxMap["truncated"].(bool)
 	query, _ := data["initial.query"].(string)
 	model, _ := data["initial.model"].(string)
 	ctx, _ := rerankOut["reranked"].([]map[string]interface{})
@@ -218,5 +242,5 @@ func ExtractRAGResponse(data StepData) (RAGResponse, bool) {
 	if prompt != nil {
 		pr, _ = prompt["prompt"].(string)
 	}
-	return RAGResponse{Query: query, Answer: answer, Documents: docs, Model: model, Prompt: pr, Context: formattedCtx, Reasoning: reasoning}, true
+	return RAGResponse{Query: query, Answer: answer, Documents: docs, Model: model, Prompt: pr, Context: formattedCtx, ContextTruncated: truncated, Reasoning: reasoning}, true
 }
