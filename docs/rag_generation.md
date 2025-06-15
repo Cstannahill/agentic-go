@@ -22,15 +22,18 @@ early testing of end to end flows.
    returned as part of the `RAGResponse`.
 
 `internal/orchestrator.BuildRAGPipeline` wires these steps together. Callers may
-provide `RAGPipelineOptions` to define defaults such as retrieval depth or the
-generation endpoint. The initial input must include a user `query` and a prompt
-`template`. Optional fields include `model`, `top_k`, `completion_endpoint`,
-`extra_context` and `reason_template`.  When `EnableReasoning` is set in
-`RAGPipelineOptions`, the `reason_template` is used to craft a second prompt for
-explanations. After execution, `ExtractRAGResponse` converts the raw
-`StepData` into a `RAGResponse` struct containing the original query, generated
-answer, the formatted context string, reasoning text and the list of injected
-`ContextDocument` values.
+provide `RAGPipelineOptions` to define defaults such as retrieval depth,
+context formatting behaviour or the generation endpoint. The initial input must
+include a user `query` and a prompt `template`. Optional fields include
+`model`, `top_k`, `completion_endpoint`, `extra_context`,
+`context_field`, `context_separator`, `context_max_chars` and
+`reason_template`. When `EnableReasoning` is set in `RAGPipelineOptions`, the
+`reason_template` is used to craft a second prompt for explanations. After
+execution, `ExtractRAGResponse` converts the raw `StepData` into a
+`RAGResponse` struct containing the original query, generated answer, the
+formatted context string, reasoning text and the list of injected
+`ContextDocument` values. A flag `context_truncated` indicates if the context
+string was shortened to the requested length.
 
 Each component runs as an agent so steps may execute concurrently where
 possible.  The `PromptAgent` and `GenerationAgent` now accept runtime options
@@ -62,6 +65,10 @@ against real services.
   produced.
 - **Response schemas** – formalise the structure returned by the pipeline so
   downstream services can consume answers and reasoning without ad-hoc parsing.
+- **Full tracing** – expose optional step level traces in the `RAGResponse` for
+  debugging and evaluation.
+- **Context size heuristics** – dynamically tune `max_chars` based on model
+  limits or user preferences.
 
 These tasks will harden the pipeline for real workloads while keeping the
 interfaces stable.
