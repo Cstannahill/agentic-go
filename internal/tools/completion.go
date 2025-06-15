@@ -16,12 +16,25 @@ type CompletionTool struct {
 	Client   *http.Client
 }
 
+var defaultCompletionEndpoint = "http://localhost:8080/completion"
+
+// SetDefaultCompletionEndpoint defines the endpoint used when none is provided.
+func SetDefaultCompletionEndpoint(ep string) { defaultCompletionEndpoint = ep }
+
+// DefaultCompletionEndpoint returns the currently configured default endpoint.
+func DefaultCompletionEndpoint() string { return defaultCompletionEndpoint }
+
 // NewCompletionTool creates a CompletionTool for the given endpoint.
 func NewCompletionTool(endpoint string) *CompletionTool {
 	return &CompletionTool{
 		Endpoint: endpoint,
 		Client:   &http.Client{Timeout: 60 * time.Second},
 	}
+}
+
+// NewDefaultCompletionTool returns a tool using the configured default endpoint.
+func NewDefaultCompletionTool() *CompletionTool {
+	return NewCompletionTool(DefaultCompletionEndpoint())
 }
 
 func (c *CompletionTool) Run(ctx context.Context, input map[string]interface{}) (map[string]interface{}, error) {
