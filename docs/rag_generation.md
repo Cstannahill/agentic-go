@@ -10,17 +10,19 @@ early testing of end to end flows.
    `EmbeddingProvider`.
 2. **RetrievalAgent** – Looks up similar documents from the `VectorStore`.
 3. **RerankAgent** – Orders the retrieved documents by relevance score.
-4. **PromptAgent** – Injects the retrieved context into a templated prompt.
+4. **PromptAgent** – Injects the retrieved documents, original query and any
+   extra context into a templated prompt.
 5. **GenerationAgent** – Sends the prompt to the Universal MCP endpoint and
    returns the completion text.
 
 `internal/orchestrator.BuildRAGPipeline` wires these steps together. It expects
 initial input containing a user `query`, a prompt `template` and optionally a
 `model` name. Additional optional fields include `top_k` to control how many
-documents are retrieved and `completion_endpoint` to override the generation
-service URL. After execution, `ExtractRAGResponse` converts the raw `StepData`
-into a `RAGResponse` struct that holds the generated answer and a list of
-`ContextDocument` values for the injected documents.
+documents are retrieved, `completion_endpoint` to override the generation
+service URL and `extra_context` to pass arbitrary data into the template.
+After execution, `ExtractRAGResponse` converts the raw `StepData` into a
+`RAGResponse` struct containing the original query, generated answer and the
+list of injected `ContextDocument` values.
 
 Each component runs as an agent so steps may execute concurrently where
 possible.  The `PromptAgent` and `GenerationAgent` now accept runtime options
@@ -29,18 +31,16 @@ against real services.
 
 ## Remaining Work
 
-- **Real LLM integration** – the `GenerationAgent` currently posts to a
 - **Real LLM integration** – the `GenerationAgent` can point to any HTTP
-  endpoint but proper authentication, error handling and retry logic still need
+  endpoint but proper authentication, retry logic and error handling still need
   to be implemented.
 - **Streaming responses** – the completion API currently returns the full text at
   once.  Support for server-sent events or gRPC streaming will allow incremental
   delivery to clients.
 - **Prompt templates from configuration** – templates are supplied in the task
-  input today.  Loading and versioning them from external files is planned.
-- **Central configuration** – environment variables or files should be used to
-  define default endpoints and retrieval parameters so deployments remain
-  consistent.
+  input today. Loading and versioning them from external files is planned.
+- **Central configuration** – environment variables or files should define
+  default endpoints and retrieval parameters so deployments remain consistent.
 - **Observability and metrics** – structured logging of each step plus basic
   metrics (latency, failure counts) are needed before production use.
 - **Advanced prompt management** – reference templates by name and version to

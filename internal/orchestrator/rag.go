@@ -7,11 +7,12 @@ import (
 // BuildRAGPipeline returns a preconfigured retrieval augmented generation pipeline.
 // The pipeline expects initial input with keys:
 //
-//	query                - user query text
-//	template             - prompt template string
-//	model                - optional model name for generation
-//	top_k                - optional number of documents to retrieve
-//	completion_endpoint  - optional override for the generation endpoint
+//		query                - user query text
+//		template             - prompt template string
+//		model                - optional model name for generation
+//		top_k                - optional number of documents to retrieve
+//		completion_endpoint  - optional override for the generation endpoint
+//	     extra_context        - optional map merged into the prompt data
 func BuildRAGPipeline(id string) Pipeline {
 	return Pipeline{
 		ID:          id,
@@ -66,8 +67,10 @@ func BuildRAGPipeline(id string) Pipeline {
 						AgentType:   "PromptAgent",
 						AgentConfig: agent.Task{Description: "Inject context"},
 						InputMappings: map[string]string{
-							"template": "initial.template",
-							"context":  "rerank_docs.default_output.reranked",
+							"template":  "initial.template",
+							"documents": "rerank_docs.default_output.reranked",
+							"query":     "initial.query",
+							"context":   "initial.extra_context",
 						},
 					},
 				},
@@ -98,6 +101,7 @@ type ContextDocument struct {
 }
 
 type RAGResponse struct {
+	Query     string            `json:"query"`
 	Answer    string            `json:"answer"`
 	Documents []ContextDocument `json:"documents"`
 }
@@ -114,6 +118,7 @@ func ExtractRAGResponse(data StepData) (RAGResponse, bool) {
 		return RAGResponse{}, false
 	}
 	answer, _ := genOut["completion"].(string)
+	query, _ := data["initial.query"].(string)
 	ctx, _ := rerankOut["reranked"].([]map[string]interface{})
 	docs := make([]ContextDocument, len(ctx))
 	for i, d := range ctx {
@@ -128,5 +133,5 @@ func ExtractRAGResponse(data StepData) (RAGResponse, bool) {
 			docs[i].Score = score
 		}
 	}
-	return RAGResponse{Answer: answer, Documents: docs}, true
+	return RAGResponse{Query: query, Answer: answer, Documents: docs}, true
 }
