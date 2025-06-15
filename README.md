@@ -19,6 +19,8 @@ Runtime options for connecting to external services are described in [docs/confi
 - **Ingest Agents and Tools** – Easily embed and store new documents in the
   configured vector database.
 - **RAG Generation Pipeline** – Embedding, retrieval, context injection and generation agents ready for early testing.
+- **Setup Package** – `setup.InitFromEnv` bootstraps the vector store and providers from environment variables.
+- **Metadata Filters** – retrieval agents can accept a `filter` map for precise queries.
 - **Pipeline Builder** – `BuildRAGPipeline` constructs a ready-to-run pipeline with optional defaults, and
   `ExtractRAGResponse` transforms raw results into a structured `RAGResponse`.
 
