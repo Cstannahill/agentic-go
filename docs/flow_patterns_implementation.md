@@ -127,3 +127,13 @@ Initial support for the **Collaborative Multi-Agent Workspace** has been added:
 - Pipeline test `TestWorkspaceSharing` demonstrates agents sharing data across groups.
 
 These pieces pave the way for more sophisticated collaboration patterns in future iterations.
+
+## Progress Update (2025-06-19)
+
+A basic implementation of the **Checkpoint and Resume** pattern is now available:
+
+- New `CheckpointManager` persists pipeline state to JSON files.
+- `Orchestrator.ExecutePipelineWithCheckpoint` loads and saves progress after each group.
+- Unit test `TestCheckpointResume` verifies that a pipeline can resume after a partial run and removes the checkpoint on success.
+
+This groundwork will allow long running pipelines to survive interruptions and continue where they left off.
