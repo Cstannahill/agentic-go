@@ -12,9 +12,10 @@ import (
 // StepEvent represents the completion of a pipeline step. It is sent on a
 // channel when using RunPipeline for asynchronous execution.
 type StepEvent struct {
-	Group  string
-	Step   string
-	Result agent.Result
+	Group   string
+	Step    string
+	Result  agent.Result
+	Partial bool
 }
 
 // RunPipeline executes the pipeline and streams step results over a channel.
@@ -44,7 +45,7 @@ func (o *Orchestrator) RunPipeline(ctx context.Context, p Pipeline, initialInput
 			fmt.Printf("Orchestrator: Executing group %d: '%s' with %d step(s)\n", gi+1, group.Name, len(group.Steps))
 
 			var wg sync.WaitGroup
-			resultCh := make(chan StepEvent, len(group.Steps))
+			resultCh := make(chan StepEvent, len(group.Steps)*16)
 			stepMap := make(map[string]PipelineStep)
 
 			for _, st := range group.Steps {
@@ -94,8 +95,17 @@ func (o *Orchestrator) RunPipeline(ctx context.Context, p Pipeline, initialInput
 					}
 
 					var res agent.Result
-					for attempt := 0; ; attempt++ {
+					var tokens []string
+					if sa, ok := ag.(agent.StreamingAgent); ok {
+						for token := range sa.Stream(ctx, task) {
+							resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: agent.Result{TaskID: task.ID, Output: token, Successful: true}, Partial: true}
+							tokens = append(tokens, token)
+						}
+						res = agent.Result{TaskID: task.ID, Output: strings.Join(tokens, ""), Successful: true}
+					} else {
 						res = ag.Execute(ctx, task)
+					}
+					for attempt := 0; ; attempt++ {
 
 						// Run critic if configured
 						if step.CriticType != "" {
@@ -116,6 +126,16 @@ func (o *Orchestrator) RunPipeline(ctx context.Context, p Pipeline, initialInput
 										for k, v := range fb.AdjustedInput {
 											task.Input[k] = v
 										}
+									}
+									if sa, ok := ag.(agent.StreamingAgent); ok {
+										tokens = nil
+										for token := range sa.Stream(ctx, task) {
+											resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: agent.Result{TaskID: task.ID, Output: token, Successful: true}, Partial: true}
+											tokens = append(tokens, token)
+										}
+										res = agent.Result{TaskID: task.ID, Output: strings.Join(tokens, ""), Successful: true}
+									} else {
+										res = ag.Execute(ctx, task)
 									}
 									continue
 								}
@@ -138,6 +158,10 @@ func (o *Orchestrator) RunPipeline(ctx context.Context, p Pipeline, initialInput
 			close(resultCh)
 
 			for ev := range resultCh {
+				if ev.Partial {
+					events <- ev
+					continue
+				}
 				if !ev.Result.Successful {
 					errCh <- fmt.Errorf("step '%s' failed: %w", ev.Step, ev.Result.Error)
 					cancel()
@@ -303,7 +327,7 @@ func (o *Orchestrator) ExecutePipelineWithCheckpoint(ctx context.Context, p Pipe
 		fmt.Printf("Orchestrator: Executing group %d: '%s' with %d step(s)\n", gi+1, group.Name, len(group.Steps))
 
 		var wg sync.WaitGroup
-		resultCh := make(chan StepEvent, len(group.Steps))
+		resultCh := make(chan StepEvent, len(group.Steps)*16)
 		stepMap := make(map[string]PipelineStep)
 
 		for _, st := range group.Steps {
@@ -339,7 +363,17 @@ func (o *Orchestrator) ExecutePipelineWithCheckpoint(ctx context.Context, p Pipe
 					Input:       taskInput,
 				}
 
-				res := ag.Execute(ctx, task)
+				var res agent.Result
+				var tokens []string
+				if sa, ok := ag.(agent.StreamingAgent); ok {
+					for token := range sa.Stream(ctx, task) {
+						resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: agent.Result{TaskID: task.ID, Output: token, Successful: true}, Partial: true}
+						tokens = append(tokens, token)
+					}
+					res = agent.Result{TaskID: task.ID, Output: strings.Join(tokens, ""), Successful: true}
+				} else {
+					res = ag.Execute(ctx, task)
+				}
 
 				// Critic logic reused from RunPipeline
 				if step.CriticType != "" {
@@ -358,7 +392,16 @@ func (o *Orchestrator) ExecutePipelineWithCheckpoint(ctx context.Context, p Pipe
 										task.Input[k] = v
 									}
 								}
-								res = ag.Execute(ctx, task)
+								if sa, ok := ag.(agent.StreamingAgent); ok {
+									tokens = nil
+									for token := range sa.Stream(ctx, task) {
+										resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: agent.Result{TaskID: task.ID, Output: token, Successful: true}, Partial: true}
+										tokens = append(tokens, token)
+									}
+									res = agent.Result{TaskID: task.ID, Output: strings.Join(tokens, ""), Successful: true}
+								} else {
+									res = ag.Execute(ctx, task)
+								}
 								continue
 							}
 							res.Successful = false
@@ -382,6 +425,9 @@ func (o *Orchestrator) ExecutePipelineWithCheckpoint(ctx context.Context, p Pipe
 		close(resultCh)
 
 		for ev := range resultCh {
+			if ev.Partial {
+				continue
+			}
 			if !ev.Result.Successful {
 				cp.Save(p.ID, gi, current)
 				return current, fmt.Errorf("step '%s' failed: %w", ev.Step, ev.Result.Error)
@@ -458,7 +504,7 @@ func (o *Orchestrator) runSimple(ctx context.Context, groups []PipelineGroup, st
 	}
 	for _, group := range groups {
 		var wg sync.WaitGroup
-		resultCh := make(chan StepEvent, len(group.Steps))
+		resultCh := make(chan StepEvent, len(group.Steps)*16)
 		for _, st := range group.Steps {
 			step := st
 			wg.Add(1)
@@ -480,13 +526,26 @@ func (o *Orchestrator) runSimple(ctx context.Context, groups []PipelineGroup, st
 					return
 				}
 				task := agent.Task{ID: fmt.Sprintf("%s_task", step.Name), Description: step.AgentConfig.Description, Input: taskInput}
-				res := ag.Execute(ctx, task)
+				var res agent.Result
+				var tokens []string
+				if sa, ok := ag.(agent.StreamingAgent); ok {
+					for token := range sa.Stream(ctx, task) {
+						resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: agent.Result{TaskID: task.ID, Output: token, Successful: true}, Partial: true}
+						tokens = append(tokens, token)
+					}
+					res = agent.Result{TaskID: task.ID, Output: strings.Join(tokens, ""), Successful: true}
+				} else {
+					res = ag.Execute(ctx, task)
+				}
 				resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: res}
 			}()
 		}
 		wg.Wait()
 		close(resultCh)
 		for ev := range resultCh {
+			if ev.Partial {
+				continue
+			}
 			if !ev.Result.Successful {
 				return current, fmt.Errorf("step '%s' failed: %w", ev.Step, ev.Result.Error)
 			}

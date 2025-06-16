@@ -151,3 +151,14 @@ Dynamic branching has been extended with initial support for speculative executi
 
 While branch groups currently run one after another, this mechanism prepares the
 engine for future parallel speculation.
+
+## Progress Update (2025-06-21)
+
+Initial support for the **Streaming Data Flow** pattern is implemented:
+
+- Agents may now implement the `StreamingAgent` interface to emit tokens over a channel.
+- `Orchestrator.RunPipeline` and related helpers forward partial results as `StepEvent` values with `Partial` set.
+- A new `StreamingEchoAgent` demonstrates streaming behaviour.
+- Unit test `TestStreamingAgent` verifies that partial events are sent and aggregated correctly.
+
+These changes enable downstream consumers to react to incremental output while maintaining compatibility with existing agents.
