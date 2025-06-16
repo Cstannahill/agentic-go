@@ -92,3 +92,16 @@ This sequential group model is a solid foundation but does not yet cover dynamic
 - Extend the pipeline definition schema (YAML/JSON) to express branching rules, retries and streaming indicators.
 
 These additions will gradually evolve the existing pipeline into a more autonomous system that can adapt to real‑world scenarios while staying compatible with the current orchestration core.
+
+## Progress Update (2025-06-16)
+
+The repository now contains initial implementations for several of the patterns listed above:
+
+- **Event Driven Pipelines**: a `watcher` package provides a `TickerWatcher` and
+  `Orchestrator.StartWatcher` starts pipelines when events arrive.
+- **Planner–Executor Loop**: a `SimplePlanningAgent` generates pipeline step
+  definitions from a goal. `Orchestrator.ExecutePlanningPipeline` converts the
+  plan to a pipeline and executes it.
+
+These prototypes offer a foundation for more advanced flows such as critic
+feedback and dynamic branching in the future.
