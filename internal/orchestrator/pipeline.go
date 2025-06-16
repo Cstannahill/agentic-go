@@ -27,7 +27,10 @@ type PipelineStep struct {
 	// BranchKey, when set, specifies the result field containing a branch
 	// label. The orchestrator uses this label to select the next pipeline
 	// group.
-	BranchKey string
+	BranchKey    string
+	CriticType   string     // Optional critic agent for feedback
+	CriticConfig agent.Task // Base task for the critic agent
+	MaxRetries   int        // Number of times to retry on critic request
 }
 
 // Pipeline defines a sequence of steps executed by the orchestrator.
