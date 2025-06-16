@@ -113,6 +113,46 @@ When an agent lacks the knowledge to complete a task it can attempt to acquire a
 
 These patterns provide inspiration for extending the orchestration layer into more autonomous and resilient workflows.
 
+## 6. Reflective Self-Improvement Cycle
+
+A dedicated reflection agent reviews completed steps and suggests adjustments to the pipeline or step parameters. The orchestrator applies these suggestions and reruns the modified pipeline until the goal is met or a limit is reached.
+
+**Design Considerations**
+
+- Step results and logs are fed into the reflection agent as context.
+- Proposed changes are validated before altering the running pipeline.
+- A maximum iteration count prevents endless refinement loops.
+
+## 7. Conditional Branching
+
+Steps may emit a branch label that determines which pipeline group executes next. This allows the workflow to adapt at runtime based on intermediate results.
+
+**Design Considerations**
+
+- Pipeline configuration defines possible branches and their corresponding groups.
+- A default branch handles unknown or missing labels.
+- Branch decisions can depend on thresholds or classification agents.
+
+## 8. Map-Reduce Fan-Out
+
+For data-intensive tasks the pipeline can split input into chunks and run groups of agents on each chunk concurrently. A reduce step then merges the partial results.
+
+**Design Considerations**
+
+- The orchestrator replicates groups for each data chunk using goroutines.
+- A combine agent aggregates outputs into a single result.
+- Chunking logic and final merging strategy must be configurable.
+
+## 9. Progressive Context Summarization
+
+Long-running flows risk accumulating too much context. A summarization agent periodically condenses intermediate state so later steps operate on manageable input sizes.
+
+**Design Considerations**
+
+- Summaries may be stored in the vector store or passed directly to later steps.
+- The summary length and frequency can be tuned per pipeline.
+- This pattern enables iterative reasoning without overwhelming token budgets.
+=======
 ## 6. Speculative Branching
 
 When a task has multiple potential approaches the pipeline can "branch"
