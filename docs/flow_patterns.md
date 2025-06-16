@@ -112,3 +112,63 @@ When an agent lacks the knowledge to complete a task it can attempt to acquire a
 - Manual review steps may be required for high risk capabilities.
 
 These patterns provide inspiration for extending the orchestration layer into more autonomous and resilient workflows.
+
+## 6. Speculative Branching
+
+When a task has multiple potential approaches the pipeline can "branch"
+into several candidate steps executed in parallel. A later aggregator
+chooses the best result based on scoring or voting. This allows rapid
+exploration of alternatives such as different prompts, retrieval
+strategies or tool selections.
+
+**Design Considerations**
+
+- Each branch is defined as its own pipeline group so all variations run
+  concurrently.
+- An aggregator agent collects the branch outputs and picks the winner
+  using custom logic (ranking, majority vote, etc.).
+- Optional early cancellation stops slower branches once a strong result
+  is found.
+
+## 7. Progressive Summarisation
+
+Long documents or streams can be summarised in multiple passes. Initial
+agents create short summaries of chunks of text which are then combined
+by a higher level summariser. The final summary is more coherent and can
+scale to large inputs.
+
+**Design Considerations**
+
+- Chunk‑level summariser agents run concurrently for efficiency.
+- Intermediate summaries are stored in a shared location for the next
+  summarisation step.
+- Multiple rounds of summarisation can be configured depending on the
+  input size.
+
+## 8. Self‑Healing Pipelines
+
+Pipelines handling real traffic may encounter transient failures or
+suboptimal results. A monitoring agent observes metrics and errors then
+adjusts parameters or restarts steps automatically.
+
+**Design Considerations**
+
+- Agents publish success and failure metrics to a central monitor.
+- A supervisor agent alters step configuration or triggers retries when
+  thresholds are exceeded.
+- Step‑level timeouts and health checks are required so unhealthy steps
+  can be detected reliably.
+
+## 9. Model Ensemble Voting
+
+For generation tasks involving LLMs, the same prompt can be sent to
+multiple models in parallel. A voting agent selects the final answer
+based on ranking or heuristics, reducing reliance on a single provider.
+
+**Design Considerations**
+
+- Generation agents run concurrently so model latencies overlap.
+- The voting agent may weight models differently or perform additional
+  quality checks.
+- The orchestrator should support configurable ensemble sizes and
+  fallbacks.
