@@ -252,3 +252,149 @@ func resolveSourcePath(data StepData, path string) (interface{}, bool) {
 	}
 	return nil, false
 }
+
+// ExecutePipelineWithCheckpoint behaves like ExecutePipeline but persists
+// progress after each group using the provided CheckpointManager. If a
+// checkpoint exists for the pipeline it resumes from the saved group index.
+func (o *Orchestrator) ExecutePipelineWithCheckpoint(ctx context.Context, p Pipeline, initialInput map[string]interface{}, cp *CheckpointManager) (StepData, error) {
+	fmt.Printf("Orchestrator: Starting pipeline '%s' with checkpoints\n", p.ID)
+
+	start := 0
+	current := make(StepData)
+	for k, v := range initialInput {
+		current[fmt.Sprintf("initial.%s", k)] = v
+	}
+	if idx, data, err := cp.Load(p.ID); err == nil {
+		start = idx
+		for k, v := range data {
+			current[k] = v
+		}
+	}
+
+	groups := p.Groups
+	for gi := start; gi < len(groups); gi++ {
+		group := groups[gi]
+		var groupBranch string
+		fmt.Printf("Orchestrator: Executing group %d: '%s' with %d step(s)\n", gi+1, group.Name, len(group.Steps))
+
+		var wg sync.WaitGroup
+		resultCh := make(chan StepEvent, len(group.Steps))
+		stepMap := make(map[string]PipelineStep)
+
+		for _, st := range group.Steps {
+			step := st
+			stepMap[step.Name] = step
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				taskInput := make(map[string]interface{})
+				for target, source := range step.InputMappings {
+					val, ok := resolveSourcePath(current, source)
+					if !ok {
+						fmt.Printf("Orchestrator: Warning - source '%s' not found for step '%s'\n", source, step.Name)
+					}
+					taskInput[target] = val
+				}
+				for k, v := range step.AgentConfig.Input {
+					if _, exists := taskInput[k]; !exists {
+						taskInput[k] = v
+					}
+				}
+
+				ag, ok := agent.New(step.AgentType)
+				if !ok {
+					resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: agent.Result{TaskID: step.Name, Error: fmt.Errorf("unknown agent type '%s'", step.AgentType)}}
+					return
+				}
+
+				task := agent.Task{
+					ID:          fmt.Sprintf("%s_task_for_%s", p.ID, step.Name),
+					Description: step.AgentConfig.Description,
+					Input:       taskInput,
+				}
+
+				res := ag.Execute(ctx, task)
+
+				// Critic logic reused from RunPipeline
+				if step.CriticType != "" {
+					cagt, ok := agent.New(step.CriticType)
+					if !ok {
+						res = agent.Result{TaskID: task.ID, Error: fmt.Errorf("unknown critic type '%s'", step.CriticType)}
+					} else if critic, ok := cagt.(agent.CriticAgent); ok {
+						for attempt := 0; ; attempt++ {
+							fb := critic.Review(ctx, res)
+							if fb.Approved {
+								break
+							}
+							if fb.Retry && attempt < step.MaxRetries {
+								if fb.AdjustedInput != nil {
+									for k, v := range fb.AdjustedInput {
+										task.Input[k] = v
+									}
+								}
+								res = ag.Execute(ctx, task)
+								continue
+							}
+							res.Successful = false
+							if fb.Escalate {
+								res.Error = fmt.Errorf("critic escalation for step '%s'", step.Name)
+							} else {
+								res.Error = fmt.Errorf("critic rejected step '%s'", step.Name)
+							}
+							break
+						}
+					} else {
+						res = agent.Result{TaskID: task.ID, Error: fmt.Errorf("critic agent '%s' missing interface", step.CriticType)}
+					}
+				}
+
+				resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: res}
+			}()
+		}
+
+		wg.Wait()
+		close(resultCh)
+
+		for ev := range resultCh {
+			if !ev.Result.Successful {
+				cp.Save(p.ID, gi, current)
+				return current, fmt.Errorf("step '%s' failed: %w", ev.Step, ev.Result.Error)
+			}
+
+			if ev.Result.Output != nil {
+				current[fmt.Sprintf("%s.%s", ev.Step, DefaultOutputKey)] = ev.Result.Output
+			}
+			current[fmt.Sprintf("%s.task_id", ev.Step)] = ev.Result.TaskID
+			current[fmt.Sprintf("%s.successful", ev.Step)] = ev.Result.Successful
+
+			if st, ok := stepMap[ev.Step]; ok && st.BranchKey != "" {
+				if ev.Result.Branch != "" {
+					groupBranch = ev.Result.Branch
+				} else if outMap, ok := ev.Result.Output.(map[string]interface{}); ok {
+					if lbl, ok := outMap[st.BranchKey].(string); ok {
+						groupBranch = lbl
+					}
+				}
+			}
+		}
+
+		if err := cp.Save(p.ID, gi+1, current); err != nil {
+			return current, err
+		}
+
+		if groupBranch != "" {
+			next, ok := p.Branches[groupBranch]
+			if !ok {
+				next, ok = p.Branches["default"]
+			}
+			if ok {
+				groups = append(groups[:gi+1], append([]PipelineGroup{next}, groups[gi+1:]...)...)
+			}
+		}
+	}
+
+	cp.Remove(p.ID)
+	fmt.Printf("Orchestrator: Pipeline '%s' completed successfully.\n", p.ID)
+	return current, nil
+}
