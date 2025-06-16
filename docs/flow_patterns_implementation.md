@@ -117,3 +117,13 @@ The code base now supports the **Critic Feedback Flow**:
 - `Orchestrator.RunPipeline` loops when the critic requests a retry, up to the
   configured `MaxRetries`.
 - Unit test `TestCriticRetry` covers a simple retry scenario.
+
+## Progress Update (2025-06-18)
+
+Initial support for the **Collaborative Multi-Agent Workspace** has been added:
+
+- New package `workspace` provides an in-memory `Store` for shared artifacts.
+- `WorkspaceAgent` writes to and reads from the store using the `mode` field.
+- Pipeline test `TestWorkspaceSharing` demonstrates agents sharing data across groups.
+
+These pieces pave the way for more sophisticated collaboration patterns in future iterations.
