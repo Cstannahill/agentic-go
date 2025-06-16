@@ -56,4 +56,59 @@ Certain actions may require explicit user confirmation. A pipeline step can paus
 - A separate service or manual command posts the approval which unblocks the waiting goroutine.
 - Timeouts and escalation paths ensure the pipeline does not hang indefinitely.
 
+## 6. Real-Time Streaming Chain
+
+Some tasks produce partial results that are useful before the entire step finishes. In this pattern each step streams its output through channels so downstream agents can begin work immediately. The orchestrator fans tokens or partial structures to consumers and aggregates their responses as they arrive.
+
+**Design Considerations**
+
+- Steps emit incremental messages instead of waiting for completion.
+- Downstream agents buffer or merge streamed data in their own goroutines.
+- Useful for LLM generation or realtime data transforms where latency matters.
+- Channel backpressure or rate limits should prevent runaway streams.
+
+## 7. Adaptive Model Selection
+
+Rather than statically assigning a tool, the orchestrator chooses among multiple models based on runtime metrics. Agents report quality and latency which feed a scoring policy that selects the best provider for each request.
+
+**Design Considerations**
+
+- Agents advertise their capabilities and historical performance.
+- The orchestrator records success rates and response times per provider.
+- A policy engine or simple heuristic picks the model on a per-call basis.
+- Fallback paths ensure progress if the top candidate fails.
+
+## 8. Self-Healing Pipelines
+
+Long running pipelines may encounter transient errors. A self-healing flow automatically retries with adjusted parameters or routes around failures before giving up.
+
+**Design Considerations**
+
+- Each step defines retry strategies and alternate execution paths.
+- Persistent state allows recovery without repeating completed work.
+- Diagnostic agents collect error context and suggest remedies.
+- Final escalation to a human operator occurs after configurable limits.
+
+## 9. Time-Scheduled Execution
+
+Some workflows run on a fixed cadence, such as nightly data refresh or periodic reporting. A scheduler agent triggers pipelines according to cron-like rules.
+
+**Design Considerations**
+
+- The scheduler maintains a queue of upcoming jobs and spawns them in their own goroutines.
+- Concurrency limits prevent too many runs from overlapping.
+- Execution history supports auditing and troubleshooting.
+- Missed schedules should be detected and optionally backfilled.
+
+## 10. Skill Discovery Loop
+
+When an agent lacks the knowledge to complete a task it can attempt to acquire a new skill on the fly. A meta-agent searches documentation or repositories for relevant examples and integrates them into the pipeline.
+
+**Design Considerations**
+
+- Retrieved code or instructions are validated in a sandbox environment.
+- Successful integrations update the agent registry so future pipelines benefit.
+- Progress tracking avoids repeated attempts to learn the same skill.
+- Manual review steps may be required for high risk capabilities.
+
 These patterns provide inspiration for extending the orchestration layer into more autonomous and resilient workflows.
