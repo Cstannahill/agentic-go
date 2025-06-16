@@ -49,9 +49,13 @@ type Pipeline struct {
 	ID          string
 	Description string
 	Groups      []PipelineGroup
-	// Branches maps branch labels to the group executed when a step emits
-	// the corresponding label. A "default" entry may be provided.
-	Branches map[string]PipelineGroup
+	// Branches maps branch labels to one or more groups executed when a
+	// step emits the corresponding label. A "default" entry may be provided.
+	Branches map[string][]PipelineGroup
+	// AggregatorType optionally specifies an agent used to select the best
+	// result when multiple branch groups are executed speculatively.
+	AggregatorType   string
+	AggregatorConfig agent.Task
 }
 
 // Orchestrator coordinates execution of pipelines.

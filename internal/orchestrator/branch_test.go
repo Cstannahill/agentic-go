@@ -26,14 +26,18 @@ func TestBranching(t *testing.T) {
 			Name:  "decide",
 			Steps: []PipelineStep{{Name: "decide", AgentType: "BranchTestAgent", BranchKey: "branch"}},
 		}},
-		Branches: map[string]PipelineGroup{
+		Branches: map[string][]PipelineGroup{
 			"foo": {
-				Name:  "foo",
-				Steps: []PipelineStep{{Name: "foo_step", AgentType: "EchoAgent"}},
+				{
+					Name:  "foo",
+					Steps: []PipelineStep{{Name: "foo_step", AgentType: "EchoAgent"}},
+				},
 			},
 			"default": {
-				Name:  "default",
-				Steps: []PipelineStep{{Name: "default_step", AgentType: "EchoAgent"}},
+				{
+					Name:  "default",
+					Steps: []PipelineStep{{Name: "default_step", AgentType: "EchoAgent"}},
+				},
 			},
 		},
 	}
