@@ -56,6 +56,56 @@ Certain actions may require explicit user confirmation. A pipeline step can paus
 - A separate service or manual command posts the approval which unblocks the waiting goroutine.
 - Timeouts and escalation paths ensure the pipeline does not hang indefinitely.
 
+## 6. Streaming Data Flow
+
+Continuous data streams such as log tailing or message queues can feed a long-lived pipeline. Agents consume items as they arrive and emit results back onto a second stream for downstream consumers.
+
+**Design Considerations**
+
+- Source and sink agents keep persistent connections open to the message bus.
+- Backpressure is handled with bounded channel buffers or fan-out workers.
+- Metrics around lag and throughput reveal when the stream is falling behind.
+
+## 7. Dynamic Branching Pipeline
+
+Rather than a fixed list of steps, earlier results determine which groups to execute next. This allows conditional flows or looping behaviour without a full planner.
+
+**Design Considerations**
+
+- Each step may return a branch identifier consumed by the orchestrator.
+- Branch definitions live in a map so new paths can be added via configuration.
+- Safe defaults ensure an unknown branch terminates gracefully.
+
+## 8. Ensemble Voting
+
+Multiple generation agents can produce candidate answers in parallel. An aggregator agent scores or ranks the options and emits the top choice or a blended result.
+
+**Design Considerations**
+
+- Agents run concurrently to reduce latency despite duplication of work.
+- The aggregator may use simple majority voting or an LLM-based judge.
+- Capturing all candidates aids auditing and future tuning.
+
+## 9. Speculative Execution
+
+When a step has several potential implementations, the orchestrator can launch them simultaneously and cancel the slower ones once a satisfactory result arrives. This trades some wasted effort for lower overall latency.
+
+**Design Considerations**
+
+- Cancellation requires each agent to respect context deadlines.
+- The orchestrator monitors which task finishes first and prunes the others.
+- This approach is best suited to idempotent operations like retrieval.
+
+## 10. Checkpoint and Resume
+
+For lengthy workflows the orchestrator periodically persists the `StepData` map so progress survives restarts or crashes. Execution can resume from the last completed group.
+
+**Design Considerations**
+
+- A durable store such as a database or object storage holds checkpoint files.
+- Each checkpoint records the pipeline ID, group index and outputs so far.
+- Cleanup policies remove old checkpoints once the pipeline succeeds.
+=======
 ## 6. Real-Time Streaming Chain
 
 Some tasks produce partial results that are useful before the entire step finishes. In this pattern each step streams its output through channels so downstream agents can begin work immediately. The orchestrator fans tokens or partial structures to consumers and aggregates their responses as they arrive.
