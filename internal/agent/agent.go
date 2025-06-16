@@ -23,6 +23,9 @@ type Result struct {
 	Output     interface{}
 	Error      error // If the task failed, the error will be here
 	Successful bool
+	// Branch optionally indicates a branch label for the orchestrator
+	// when implementing dynamic pipelines.
+	Branch string
 }
 
 // Agent defines the contract for any autonomous worker in our system.

@@ -24,6 +24,10 @@ type PipelineStep struct {
 	AgentType     string            // Identifies which agent implementation to use
 	AgentConfig   agent.Task        // Base task configuration for the agent
 	InputMappings map[string]string // Mapping of agent input keys to StepData sources
+	// BranchKey, when set, specifies the result field containing a branch
+	// label. The orchestrator uses this label to select the next pipeline
+	// group.
+	BranchKey string
 }
 
 // Pipeline defines a sequence of steps executed by the orchestrator.
@@ -42,6 +46,9 @@ type Pipeline struct {
 	ID          string
 	Description string
 	Groups      []PipelineGroup
+	// Branches maps branch labels to the group executed when a step emits
+	// the corresponding label. A "default" entry may be provided.
+	Branches map[string]PipelineGroup
 }
 
 // Orchestrator coordinates execution of pipelines.
