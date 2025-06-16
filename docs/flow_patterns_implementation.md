@@ -105,3 +105,15 @@ The repository now contains initial implementations for several of the patterns 
 
 These prototypes offer a foundation for more advanced flows such as critic
 feedback and dynamic branching in the future.
+
+## Progress Update (2025-06-17)
+
+The code base now supports the **Critic Feedback Flow**:
+
+- `PipelineStep` accepts optional `CriticType`, `CriticConfig` and
+  `MaxRetries` fields.
+- A new `KeywordCriticAgent` demonstrates the `CriticAgent` interface. It
+  reviews worker output and may request a retry with adjusted input.
+- `Orchestrator.RunPipeline` loops when the critic requests a retry, up to the
+  configured `MaxRetries`.
+- Unit test `TestCriticRetry` covers a simple retry scenario.

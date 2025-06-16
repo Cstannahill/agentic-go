@@ -93,7 +93,43 @@ func (o *Orchestrator) RunPipeline(ctx context.Context, p Pipeline, initialInput
 						Input:       taskInput,
 					}
 
-					res := ag.Execute(ctx, task)
+					var res agent.Result
+					for attempt := 0; ; attempt++ {
+						res = ag.Execute(ctx, task)
+
+						// Run critic if configured
+						if step.CriticType != "" {
+							cagt, ok := agent.New(step.CriticType)
+							if !ok {
+								res = agent.Result{TaskID: task.ID, Error: fmt.Errorf("unknown critic type '%s'", step.CriticType)}
+								break
+							}
+							critic, ok := cagt.(agent.CriticAgent)
+							if !ok {
+								res = agent.Result{TaskID: task.ID, Error: fmt.Errorf("critic agent '%s' missing interface", step.CriticType)}
+								break
+							}
+							fb := critic.Review(ctx, res)
+							if !fb.Approved {
+								if fb.Retry && attempt < step.MaxRetries {
+									if fb.AdjustedInput != nil {
+										for k, v := range fb.AdjustedInput {
+											task.Input[k] = v
+										}
+									}
+									continue
+								}
+								res.Successful = false
+								if fb.Escalate {
+									res.Error = fmt.Errorf("critic escalation for step '%s'", step.Name)
+								} else {
+									res.Error = fmt.Errorf("critic rejected step '%s'", step.Name)
+								}
+							}
+						}
+						break
+					}
+
 					resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: res}
 				}()
 			}
