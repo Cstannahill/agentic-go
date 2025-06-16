@@ -137,3 +137,17 @@ A basic implementation of the **Checkpoint and Resume** pattern is now available
 - Unit test `TestCheckpointResume` verifies that a pipeline can resume after a partial run and removes the checkpoint on success.
 
 This groundwork will allow long running pipelines to survive interruptions and continue where they left off.
+
+## Progress Update (2025-06-20)
+
+Dynamic branching has been extended with initial support for speculative execution:
+
+- `Pipeline.Branches` now maps a label to a slice of `PipelineGroup` values.
+- `AggregatorType` and `AggregatorConfig` fields select an `AggregatorAgent` used
+  to choose the best branch result.
+- A sample `LengthAggregator` demonstrates the new interface.
+- The orchestrator executes all candidate branch groups sequentially and merges
+  the aggregator’s chosen output.
+
+While branch groups currently run one after another, this mechanism prepares the
+engine for future parallel speculation.

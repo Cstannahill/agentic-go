@@ -170,8 +170,33 @@ func (o *Orchestrator) RunPipeline(ctx context.Context, p Pipeline, initialInput
 				if !ok {
 					next, ok = p.Branches["default"]
 				}
-				if ok {
-					groups = append(groups[:gi+1], append([]PipelineGroup{next}, groups[gi+1:]...)...)
+				if ok && len(next) > 0 {
+					if len(next) == 1 {
+						groups = append(groups[:gi+1], append([]PipelineGroup{next[0]}, groups[gi+1:]...)...)
+					} else {
+						branchResults := make(map[string]agent.StepData)
+						for i, grp := range next {
+							out, err := o.runSimple(ctx, []PipelineGroup{grp}, current)
+							if err != nil {
+								errCh <- err
+								cancel()
+								return
+							}
+							label := fmt.Sprintf("%s_%d", groupBranch, i)
+							branchResults[label] = agent.StepData(out)
+						}
+						if p.AggregatorType != "" {
+							ag, ok := agent.New(p.AggregatorType)
+							if ok {
+								if agg, ok := ag.(agent.AggregatorAgent); ok {
+									_, data := agg.Choose(ctx, branchResults)
+									for k, v := range data {
+										current[k] = v
+									}
+								}
+							}
+						}
+					}
 				}
 			}
 		}
@@ -388,13 +413,89 @@ func (o *Orchestrator) ExecutePipelineWithCheckpoint(ctx context.Context, p Pipe
 			if !ok {
 				next, ok = p.Branches["default"]
 			}
-			if ok {
-				groups = append(groups[:gi+1], append([]PipelineGroup{next}, groups[gi+1:]...)...)
+			if ok && len(next) > 0 {
+				if len(next) == 1 {
+					groups = append(groups[:gi+1], append([]PipelineGroup{next[0]}, groups[gi+1:]...)...)
+				} else {
+					branchResults := make(map[string]agent.StepData)
+					for i, grp := range next {
+						out, err := o.runSimple(ctx, []PipelineGroup{grp}, current)
+						if err != nil {
+							cp.Save(p.ID, gi, current)
+							return current, err
+						}
+						label := fmt.Sprintf("%s_%d", groupBranch, i)
+						branchResults[label] = agent.StepData(out)
+					}
+					if p.AggregatorType != "" {
+						ag, ok := agent.New(p.AggregatorType)
+						if ok {
+							if agg, ok := ag.(agent.AggregatorAgent); ok {
+								_, data := agg.Choose(ctx, branchResults)
+								for k, v := range data {
+									current[k] = v
+								}
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 
 	cp.Remove(p.ID)
 	fmt.Printf("Orchestrator: Pipeline '%s' completed successfully.\n", p.ID)
+	return current, nil
+}
+
+// runSimple executes the provided groups sequentially starting from the given
+// step data. It is used for speculative branches where full pipeline features
+// like checkpointing are unnecessary.
+func (o *Orchestrator) runSimple(ctx context.Context, groups []PipelineGroup, start StepData) (StepData, error) {
+	current := make(StepData)
+	for k, v := range start {
+		current[k] = v
+	}
+	for _, group := range groups {
+		var wg sync.WaitGroup
+		resultCh := make(chan StepEvent, len(group.Steps))
+		for _, st := range group.Steps {
+			step := st
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				taskInput := make(map[string]interface{})
+				for target, source := range step.InputMappings {
+					val, _ := resolveSourcePath(current, source)
+					taskInput[target] = val
+				}
+				for k, v := range step.AgentConfig.Input {
+					if _, ok := taskInput[k]; !ok {
+						taskInput[k] = v
+					}
+				}
+				ag, ok := agent.New(step.AgentType)
+				if !ok {
+					resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: agent.Result{TaskID: step.Name, Error: fmt.Errorf("unknown agent type '%s'", step.AgentType)}}
+					return
+				}
+				task := agent.Task{ID: fmt.Sprintf("%s_task", step.Name), Description: step.AgentConfig.Description, Input: taskInput}
+				res := ag.Execute(ctx, task)
+				resultCh <- StepEvent{Group: group.Name, Step: step.Name, Result: res}
+			}()
+		}
+		wg.Wait()
+		close(resultCh)
+		for ev := range resultCh {
+			if !ev.Result.Successful {
+				return current, fmt.Errorf("step '%s' failed: %w", ev.Step, ev.Result.Error)
+			}
+			if ev.Result.Output != nil {
+				current[fmt.Sprintf("%s.%s", ev.Step, DefaultOutputKey)] = ev.Result.Output
+			}
+			current[fmt.Sprintf("%s.task_id", ev.Step)] = ev.Result.TaskID
+			current[fmt.Sprintf("%s.successful", ev.Step)] = ev.Result.Successful
+		}
+	}
 	return current, nil
 }
