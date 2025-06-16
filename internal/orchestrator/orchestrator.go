@@ -37,14 +37,19 @@ func (o *Orchestrator) RunPipeline(ctx context.Context, p Pipeline, initialInput
 		ctx, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		for gi, group := range p.Groups {
+		groups := p.Groups
+		for gi := 0; gi < len(groups); gi++ {
+			group := groups[gi]
+			var groupBranch string
 			fmt.Printf("Orchestrator: Executing group %d: '%s' with %d step(s)\n", gi+1, group.Name, len(group.Steps))
 
 			var wg sync.WaitGroup
 			resultCh := make(chan StepEvent, len(group.Steps))
+			stepMap := make(map[string]PipelineStep)
 
 			for _, st := range group.Steps {
 				step := st
+				stepMap[step.Name] = step
 				wg.Add(1)
 				go func() {
 					defer wg.Done()
@@ -111,7 +116,27 @@ func (o *Orchestrator) RunPipeline(ctx context.Context, p Pipeline, initialInput
 				current[fmt.Sprintf("%s.task_id", ev.Step)] = ev.Result.TaskID
 				current[fmt.Sprintf("%s.successful", ev.Step)] = ev.Result.Successful
 
+				if st, ok := stepMap[ev.Step]; ok && st.BranchKey != "" {
+					if ev.Result.Branch != "" {
+						groupBranch = ev.Result.Branch
+					} else if outMap, ok := ev.Result.Output.(map[string]interface{}); ok {
+						if lbl, ok := outMap[st.BranchKey].(string); ok {
+							groupBranch = lbl
+						}
+					}
+				}
+
 				events <- ev
+			}
+
+			if groupBranch != "" {
+				next, ok := p.Branches[groupBranch]
+				if !ok {
+					next, ok = p.Branches["default"]
+				}
+				if ok {
+					groups = append(groups[:gi+1], append([]PipelineGroup{next}, groups[gi+1:]...)...)
+				}
 			}
 		}
 
