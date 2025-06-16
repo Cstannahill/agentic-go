@@ -35,6 +35,56 @@ This sequential group model is a solid foundation but does not yet cover dynamic
    - Augment agents to optionally return output channels instead of a single result. The orchestrator fans tokens or partial structures to downstream consumers so that steps can begin work before their predecessors fully complete.
    - Backpressure must be handled through bounded channels or rate limiting.
 
+7. **Collaborative Multi-Agent Workspace**
+   - Introduce a lightweight shared store (in-memory or simple DB) for intermediate artifacts.
+   - Provide helper functions so agents can post and retrieve workspace documents.
+   - Synchronisation points ensure each group has a consistent view before continuing.
+
+8. **Human-in-the-Loop Approval**
+   - Add a special step type that pauses execution pending external approval.
+   - Persist waiting steps so the process can survive restarts.
+   - Provide CLI or API endpoints for humans to approve or reject.
+
+9. **Real-Time Streaming Chain**
+   - Allow steps to stream partial results over channels to downstream agents.
+   - Downstream agents consume tokens incrementally and optionally merge them.
+   - Rate limits or bounded buffers guard against overwhelming consumers.
+
+10. **Adaptive Model Selection**
+    - Record success rate and latency metrics per model provider.
+    - A policy engine selects the model at runtime using these metrics.
+    - Fallback to alternate providers if the chosen model fails.
+
+11. **Self-Healing Pipelines**
+    - Add monitoring agents that watch metrics and error logs.
+    - Supervisors trigger retries or step adjustments when thresholds are exceeded.
+    - Escalate to operators when automatic recovery fails.
+
+12. **Time-Scheduled Execution**
+    - Implement a scheduler agent that triggers pipelines based on cron rules.
+    - Maintain a history of executions and handle missed schedules.
+    - Concurrency controls prevent overlapping runs.
+
+13. **Skill Discovery Loop**
+    - Provide a meta-agent that searches for missing skills or example code.
+    - Retrieved artifacts are validated in a sandbox and registered if safe.
+    - Track progress to avoid repeatedly learning the same capability.
+
+14. **Reflective Self-Improvement Cycle**
+    - After each run, a reflection agent analyses results and proposes changes.
+    - The orchestrator can apply approved changes and rerun the pipeline.
+    - Limit iterations to avoid endless tuning.
+
+15. **Map-Reduce Fan-Out**
+    - Split large datasets into chunks and run pipeline groups per chunk in parallel.
+    - A reduce step aggregates partial results via a combine agent.
+    - Chunking strategy and merging logic are configurable.
+
+16. **Progressive Summarization**
+    - Chain summariser agents that condense chunks of text in multiple passes.
+    - Store intermediate summaries for later stages.
+    - Configurable summary length and number of passes.
+
 ## Next Steps
 
 - Prototype the event watcher and planning agent to validate the hooks needed in `Orchestrator.RunPipeline`.
