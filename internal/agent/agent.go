@@ -3,7 +3,8 @@ package agent
 
 import (
 	"context"
-	"fmt"  // For formatting strings
+	"fmt" // For formatting strings
+	"strings"
 	"time" // For simulating work
 
 	"github.com/google/uuid" // For generating unique IDs
@@ -26,6 +27,16 @@ type Result struct {
 	// Branch optionally indicates a branch label for the orchestrator
 	// when implementing dynamic pipelines.
 	Branch string
+}
+
+// StreamingAgent optionally streams output tokens instead of returning a single
+// result immediately. Implementations should still satisfy the Agent interface
+// so callers can gather a final result when needed.
+type StreamingAgent interface {
+	Agent
+	// Stream begins executing the task and returns a channel of tokens. The
+	// channel is closed when the agent finishes or the context is cancelled.
+	Stream(ctx context.Context, task Task) <-chan string
 }
 
 // Agent defines the contract for any autonomous worker in our system.
@@ -124,4 +135,51 @@ func (ea *EchoAgent) Execute(ctx context.Context, task Task) Result {
 
 func init() {
 	Register("EchoAgent", func() Agent { return NewEchoAgent() })
+}
+
+// StreamingEchoAgent emits the provided text one rune at a time over a channel.
+type StreamingEchoAgent struct{ agentID string }
+
+// NewStreamingEchoAgent creates a StreamingEchoAgent instance.
+func NewStreamingEchoAgent() *StreamingEchoAgent {
+	return &StreamingEchoAgent{agentID: fmt.Sprintf("stream-echo-%s", uuid.NewString())}
+}
+
+func (s *StreamingEchoAgent) ID() string { return s.agentID }
+
+// Stream sends each rune of the input "text" field as a separate token.
+func (s *StreamingEchoAgent) Stream(ctx context.Context, task Task) <-chan string {
+	ch := make(chan string)
+	go func() {
+		defer close(ch)
+		txt, _ := task.Input["text"].(string)
+		delay := time.Millisecond * 10
+		if d, ok := task.Input["delay_ms"].(int); ok {
+			delay = time.Duration(d) * time.Millisecond
+		} else if d, ok := task.Input["delay_ms"].(float64); ok {
+			delay = time.Duration(d) * time.Millisecond
+		}
+		for _, r := range txt {
+			select {
+			case <-ctx.Done():
+				return
+			case ch <- string(r):
+			}
+			time.Sleep(delay)
+		}
+	}()
+	return ch
+}
+
+// Execute collects all streamed tokens into a single string output.
+func (s *StreamingEchoAgent) Execute(ctx context.Context, task Task) Result {
+	var builder strings.Builder
+	for token := range s.Stream(ctx, task) {
+		builder.WriteString(token)
+	}
+	return Result{TaskID: task.ID, Output: builder.String(), Successful: true}
+}
+
+func init() {
+	Register("StreamingEchoAgent", func() Agent { return NewStreamingEchoAgent() })
 }
